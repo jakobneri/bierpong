@@ -40,6 +40,9 @@ app.use(helmet({
       styleSrc: ["'self'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", 'data:'],
+      // Only the reverse proxy should decide http->https upgrades; forcing it
+      // here breaks direct http access (e.g. before a TLS proxy is set up).
+      upgradeInsecureRequests: null,
     },
   },
 }));
