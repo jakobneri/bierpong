@@ -6,6 +6,16 @@ const dataDir = process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data')
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
+try {
+  fs.accessSync(dataDir, fs.constants.W_OK);
+} catch (err) {
+  console.error(
+    `FATAL: data directory "${dataDir}" is not writable by this process.\n` +
+    'If you are not running inside Docker, remove/unset DATA_DIR in your .env ' +
+    '(it defaults to a writable ./data folder in the project).'
+  );
+  process.exit(1);
+}
 
 const dbPath = path.join(dataDir, 'bierpong.db');
 const db = new Database(dbPath);
