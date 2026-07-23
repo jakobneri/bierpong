@@ -1,5 +1,5 @@
 const db = require('./db');
-const { getPartyByCode, getPartyPlayersStmt, buildPartyState } = require('./partyState');
+const { getPartyByCode, getPartyPlayersStmt, buildPartyState, maxPerTeam } = require('./partyState');
 
 const insertMatch = db.prepare(`
   INSERT INTO matches (mode, created_by, team1_score, team2_score, winner, status, resolved_at, party_id)
@@ -10,12 +10,30 @@ const updateCupsStmt = {
   1: db.prepare('UPDATE parties SET team1_cups = ? WHERE id = ?'),
   2: db.prepare('UPDATE parties SET team2_cups = ? WHERE id = ?'),
 };
+const updateTurnStmt = db.prepare('UPDATE parties SET current_turn_team = ?, throws_this_turn = ? WHERE id = ?');
 const finishPartyStmt = db.prepare(
   "UPDATE parties SET status = 'finished', finished_at = datetime('now'), match_id = ? WHERE id = ?"
 );
 
 function roomFor(code) {
   return `party:${code}`;
+}
+
+function otherTeam(team) {
+  return team === 1 ? 2 : 1;
+}
+
+// Advances the turn counter for a throw just taken; flips to the other
+// team once the mode's throw allowance (1 per player) is used up.
+function advanceTurn(party) {
+  const throwsPerTurn = maxPerTeam(party.mode);
+  let team = party.current_turn_team;
+  let throwsTaken = party.throws_this_turn + 1;
+  if (throwsTaken >= throwsPerTurn) {
+    team = otherTeam(team);
+    throwsTaken = 0;
+  }
+  updateTurnStmt.run(team, throwsTaken, party.id);
 }
 
 function finalizeMatch(party, team1Cups, team2Cups) {
@@ -58,22 +76,47 @@ module.exports = function initSocket(io) {
       if (!Number.isInteger(index) || index < 0 || index >= party.rack_size) return;
 
       const players = getPartyPlayersStmt.all(party.id);
-      const isPlayer = players.some((p) => p.user_id === sessionUser.id);
-      if (!isPlayer) return;
+      const requester = players.find((p) => p.user_id === sessionUser.id);
+      if (!requester) return;
+      // Only the team currently on throw may act, and only against the
+      // opposing rack - you hit the other side's cups, never your own.
+      if (requester.team !== party.current_turn_team) return;
+      if (team === requester.team) return;
 
       const team1Cups = JSON.parse(party.team1_cups);
       const team2Cups = JSON.parse(party.team2_cups);
       const targetCups = team === 1 ? team1Cups : team2Cups;
-      targetCups[index] = !targetCups[index];
+      if (targetCups[index]) return; // already hit, nothing to do
+
+      targetCups[index] = true;
       updateCupsStmt[team].run(JSON.stringify(targetCups), party.id);
 
-      let updatedParty = getPartyByCode.get(party.code);
+      const rackCleared = team1Cups.every(Boolean) || team2Cups.every(Boolean);
+      if (!rackCleared) {
+        advanceTurn(party);
+      }
 
-      if (team1Cups.every(Boolean) || team2Cups.every(Boolean)) {
+      let updatedParty = getPartyByCode.get(party.code);
+      if (rackCleared) {
         finalizeMatch(updatedParty, team1Cups, team2Cups);
         updatedParty = getPartyByCode.get(party.code);
       }
 
+      io.to(roomFor(party.code)).emit('party:state', buildPartyState(updatedParty));
+    });
+
+    socket.on('party:miss', ({ code }) => {
+      if (!sessionUser || typeof code !== 'string') return;
+      const party = getPartyByCode.get(code.toUpperCase());
+      if (!party || party.status !== 'active') return;
+
+      const players = getPartyPlayersStmt.all(party.id);
+      const requester = players.find((p) => p.user_id === sessionUser.id);
+      if (!requester || requester.team !== party.current_turn_team) return;
+
+      advanceTurn(party);
+
+      const updatedParty = getPartyByCode.get(party.code);
       io.to(roomFor(party.code)).emit('party:state', buildPartyState(updatedParty));
     });
   });

@@ -99,20 +99,14 @@ const dashboardStatsStmt = db.prepare(`
   WHERE mp.user_id = ?
 `);
 
-const pendingCountStmt = db.prepare(`
-  SELECT m.id, m.created_by,
-    (SELECT team FROM match_players WHERE match_id = m.id AND user_id = m.created_by) AS creator_team,
-    mp.team AS my_team
-  FROM matches m
-  JOIN match_players mp ON mp.match_id = m.id
-  WHERE mp.user_id = ? AND m.status = 'pending'
-`);
-
 app.get('/', (req, res) => {
-  res.redirect(req.session.user ? '/dashboard' : '/login');
+  if (!req.session.user) return res.redirect('/login');
+  res.redirect(req.session.user.isManagement ? '/admin' : '/dashboard');
 });
 
 app.get('/dashboard', requireAuth, (req, res) => {
+  if (req.session.user.isManagement) return res.redirect('/admin');
+
   const raw = dashboardStatsStmt.get(req.session.user.id);
   const stats = {
     games: raw.games || 0,
@@ -120,10 +114,8 @@ app.get('/dashboard', requireAuth, (req, res) => {
     losses: raw.losses || 0,
     winRate: raw.games ? (raw.wins / raw.games) * 100 : 0,
   };
-  const pendingCount = pendingCountStmt.all(req.session.user.id)
-    .filter((r) => r.my_team !== r.creator_team).length;
 
-  res.render('dashboard', { title: 'Dashboard', stats, pendingCount });
+  res.render('dashboard', { title: 'Dashboard', stats });
 });
 
 app.use((req, res) => {

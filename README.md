@@ -8,28 +8,32 @@ automatisch aus den bestätigten Spielen berechnet.
 ## Funktionsweise
 
 - Jeder registriert sich mit Username + Passwort.
-- Ein Spieler trägt ein Spiel ein (1 gegen 1 oder 2 gegen 2), inkl. Ergebnis.
-- Das Spiel ist erst **"pending"** — mindestens ein Spieler der Gegenseite
-  muss es unter "Ausstehend" bestätigen, damit es in die Statistik einfließt.
-  So kann niemand alleine sich selbst Siege gutschreiben.
-- Die Gegenseite kann das Spiel stattdessen auch ablehnen (z. B. bei
-  Falscheingabe).
-- Bestenliste (`/stats`) und persönliche Profile (`/stats/<username>`)
-  zeigen automatisch berechnete Statistiken aus allen bestätigten Spielen.
-- **Live-Party** (`/party/new`): Alle Spieler sind gleichzeitig im selben
-  Spiel dabei (1 gegen 1 oder 2 gegen 2), joinen per Code/Link auf ihrem
-  Handy und sehen das klassische Bierpong-Dreieck (4-3-2-1) beider Teams.
-  Ein Treffer wird angetippt und ist per WebSocket (Socket.io) sofort bei
-  allen sichtbar. Ist ein Rack komplett leer, wird das Spiel automatisch
-  beendet und direkt bestätigt in die Statistik übernommen — da alle
-  Beteiligten live dabei waren, ist keine separate Bestätigung nötig.
+- **Live-Party** (`/party/new`) ist der einzige Weg, ein Spiel zu tracken:
+  Alle Spieler sind gleichzeitig im selben Spiel dabei (1 gegen 1 oder 2
+  gegen 2), joinen per Code/Link auf ihrem Handy und sehen das klassische
+  Bierpong-Dreieck (4-3-2-1) beider Teams — die zwei Pyramiden zeigen sich
+  spiegelbildlich zueinander, wie am echten Tisch.
+  - Es gibt ein rundenbasiertes Wurfsystem: Nach 1 Wurf (1 gegen 1) bzw.
+    2 Würfen (2 gegen 2) ist automatisch die andere Seite an der Reihe.
+  - Man kann nur die Becher der **Gegenseite** antippen, nie die eigenen.
+  - Ein "Daneben"-Knopf zählt einen Fehlwurf, ohne einen Becher zu treffen.
+  - Änderungen sind per WebSocket (Socket.io) sofort bei allen sichtbar.
+  - Ist ein Rack komplett leer, wird das Spiel automatisch beendet und
+    direkt bestätigt in die Statistik übernommen — da alle live dabei
+    waren, ist keine separate Bestätigung nötig.
 - **Solo-Training** (`/solo`): Trackt die eigene Trefferquote in
-  Pickup-Runden gegen unbekannte Gegner, ganz ohne deren Account — einfach
-  Treffer/Fehlwurf antippen und die Sitzung speichern.
+  Pickup-Runden gegen unbekannte Gegner, ganz ohne deren Account. Man
+  tippt den getroffenen Becher im selben Dreieck-Layout an (oder
+  "Daneben"), und das Profil zeigt danach eine Heatmap, welche
+  Becher-Positionen am häufigsten getroffen werden.
+- Bestenliste (`/stats`) und persönliche Profile (`/stats/<username>`)
+  zeigen automatisch berechnete Statistiken aus allen Live-Party-Spielen.
 - **Admin-Dashboard** (`/admin`, nur für Admins sichtbar): Übersicht über
   Nutzer, Spiele und laufende Partys, plus Nutzerverwaltung (Admin-Rechte
   vergeben/entziehen, Accounts deaktivieren, Passwörter zurücksetzen). Der
-  erste registrierte Account wird automatisch zum Admin.
+  erste registrierte Account wird automatisch zum Admin — alternativ kann
+  ein reiner Management-Account per `ADMIN_PASSWORD` in `.env` eingerichtet
+  werden (siehe unten), der nicht selbst mitspielt.
 
 ## Tech-Stack
 
@@ -56,6 +60,20 @@ npm run dev
 ```
 
 Die App läuft dann auf http://localhost:3000.
+
+### Optionaler Management-Account
+
+Wer ausschließlich Nutzer verwalten will, ohne selbst als Spieler in
+Statistik/Bestenliste aufzutauchen, kann in `.env` ein `ADMIN_PASSWORD`
+setzen. Beim Start wird dann automatisch ein Account `admin` mit diesem
+Passwort angelegt (bzw. bei Änderung synchronisiert). Dieser Account:
+
+- kann sich nur im Admin-Dashboard bewegen (Nav zeigt nur "Admin"),
+- kann keine Live-Party oder Solo-Training starten/beitreten,
+- taucht nie in Bestenliste oder Spielerprofilen auf.
+
+Der reguläre Weg (erster registrierter Account wird automatisch Admin)
+funktioniert weiterhin, falls `ADMIN_PASSWORD` nicht gesetzt ist.
 
 ## Deployment auf einem Server (Docker)
 
@@ -112,7 +130,7 @@ src/
   middleware/          Auth-, Admin- und CSRF-Middleware
   routes/
     auth.js            Register/Login/Logout
-    matches.js          Spiele manuell anlegen, bestätigen, ablehnen, Verlauf
+    matches.js          Spielverlauf (Spiele entstehen ausschließlich über Live-Party)
     stats.js            Bestenliste + Spielerprofile
     party.js             Live-Party erstellen/beitreten/starten
     solo.js              Solo-Trefferquote-Tracking

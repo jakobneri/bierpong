@@ -1,6 +1,6 @@
 const db = require('../db');
 
-const getActiveFlagStmt = db.prepare('SELECT is_active, is_admin FROM users WHERE id = ?');
+const getActiveFlagStmt = db.prepare('SELECT is_active, is_admin, is_management FROM users WHERE id = ?');
 
 function attachUser(req, res, next) {
   res.locals.user = req.session.user || null;
@@ -19,6 +19,7 @@ function requireAuth(req, res, next) {
     return req.session.destroy(() => res.redirect('/login'));
   }
   req.session.user.isAdmin = !!row.is_admin;
+  req.session.user.isManagement = !!row.is_management;
   res.locals.user = req.session.user;
 
   next();
@@ -31,6 +32,13 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+function blockManagement(req, res, next) {
+  if (req.session.user && req.session.user.isManagement) {
+    return res.redirect('/admin');
+  }
+  next();
+}
+
 function redirectIfAuthenticated(req, res, next) {
   if (req.session.user) {
     return res.redirect('/dashboard');
@@ -38,4 +46,4 @@ function redirectIfAuthenticated(req, res, next) {
   next();
 }
 
-module.exports = { attachUser, requireAuth, requireAdmin, redirectIfAuthenticated };
+module.exports = { attachUser, requireAuth, requireAdmin, blockManagement, redirectIfAuthenticated };

@@ -36,6 +36,9 @@ router.post('/register', redirectIfAuthenticated, authLimiter, csrfProtect, asyn
   if (!USERNAME_RE.test(username)) {
     return fail('Benutzername muss 3-20 Zeichen lang sein (Buchstaben, Zahlen, Unterstrich).');
   }
+  if (username.toLowerCase() === 'admin') {
+    return fail('Dieser Benutzername ist reserviert.');
+  }
   if (password.length < 6) {
     return fail('Passwort muss mindestens 6 Zeichen lang sein.');
   }
@@ -60,7 +63,7 @@ router.post('/register', redirectIfAuthenticated, authLimiter, csrfProtect, asyn
 
   req.session.regenerate((err) => {
     if (err) return fail('Registrierung fehlgeschlagen, bitte erneut versuchen.');
-    req.session.user = { id: info.lastInsertRowid, username, isAdmin };
+    req.session.user = { id: info.lastInsertRowid, username, isAdmin, isManagement: false };
     res.redirect('/dashboard');
   });
 });
@@ -93,7 +96,12 @@ router.post('/login', redirectIfAuthenticated, authLimiter, csrfProtect, async (
 
   req.session.regenerate((err) => {
     if (err) return fail();
-    req.session.user = { id: user.id, username: user.username, isAdmin: !!user.is_admin };
+    req.session.user = {
+      id: user.id,
+      username: user.username,
+      isAdmin: !!user.is_admin,
+      isManagement: !!user.is_management,
+    };
     res.redirect('/dashboard');
   });
 });

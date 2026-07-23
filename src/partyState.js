@@ -29,6 +29,9 @@ function buildPartyState(party) {
     team2Cups: JSON.parse(party.team2_cups),
     matchId: party.match_id,
     maxPerTeam: maxPerTeam(party.mode),
+    currentTurnTeam: party.current_turn_team,
+    throwsThisTurn: party.throws_this_turn,
+    throwsPerTurn: maxPerTeam(party.mode),
     players: {
       team1: players.filter((p) => p.team === 1).map((p) => ({ id: p.user_id, username: p.username })),
       team2: players.filter((p) => p.team === 2).map((p) => ({ id: p.user_id, username: p.username })),

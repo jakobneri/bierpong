@@ -4,11 +4,15 @@
 
   const code = root.dataset.code;
   const isPlayer = root.dataset.isPlayer === 'true';
+  const myTeam = root.dataset.myTeam ? parseInt(root.dataset.myTeam, 10) : null;
   let currentStatus = root.dataset.status;
 
   const banner = document.getElementById('party-live-banner');
+  const turnBanner = document.getElementById('party-turn-banner');
+  const missBtn = document.getElementById('party-miss-btn');
 
   const socket = io();
+  let receivedInitialState = false;
 
   socket.on('connect', () => {
     socket.emit('party:join-room', { code });
@@ -21,6 +25,31 @@
       const cup = rack.querySelector(`.cup[data-index="${index}"]`);
       if (cup) cup.classList.toggle('hit', !!hit);
     });
+  }
+
+  function updateTurnUI(state) {
+    const isMyTurn = myTeam !== null && state.currentTurnTeam === myTeam;
+
+    [1, 2].forEach((team) => {
+      const rack = root.querySelector(`[data-rack="${team}"]`);
+      if (!rack) return;
+      const isOwnRack = team === myTeam;
+      const tappable = isPlayer && isMyTurn && !isOwnRack;
+      rack.classList.toggle('rack-locked', !tappable);
+      rack.classList.toggle('rack-own', isOwnRack);
+    });
+
+    if (turnBanner) {
+      const teamNames = state.players[`team${state.currentTurnTeam}`].map((p) => p.username).join(' & ');
+      turnBanner.textContent = isMyTurn
+        ? `Du bist dran! (Wurf ${state.throwsThisTurn + 1}/${state.throwsPerTurn})`
+        : `${teamNames} ist dran (Wurf ${state.throwsThisTurn + 1}/${state.throwsPerTurn})`;
+      turnBanner.classList.toggle('my-turn', isMyTurn);
+    }
+
+    if (missBtn) {
+      missBtn.disabled = !(isPlayer && isMyTurn);
+    }
   }
 
   function showFinishedBanner(state) {
@@ -36,6 +65,19 @@
   }
 
   socket.on('party:state', (state) => {
+    // The first event is just the room-join echo of the state already
+    // baked into this page load - sync silently, don't reload off it.
+    if (!receivedInitialState) {
+      receivedInitialState = true;
+      currentStatus = state.status;
+      if (state.status === 'active') {
+        updateCups('[data-rack="1"]', state.team1Cups);
+        updateCups('[data-rack="2"]', state.team2Cups);
+        updateTurnUI(state);
+      }
+      return;
+    }
+
     if (state.status !== currentStatus) {
       if (state.status === 'finished') {
         showFinishedBanner(state);
@@ -48,9 +90,17 @@
       return;
     }
 
+    if (state.status === 'waiting') {
+      // Someone joined/left the lobby - it's fully server-rendered, so a
+      // reload is the simplest way to show the updated player list.
+      window.location.reload();
+      return;
+    }
+
     if (state.status === 'active') {
       updateCups('[data-rack="1"]', state.team1Cups);
       updateCups('[data-rack="2"]', state.team2Cups);
+      updateTurnUI(state);
     }
   });
 
@@ -65,11 +115,20 @@
     root.addEventListener('click', (event) => {
       const cup = event.target.closest('.cup');
       if (!cup) return;
+      const rack = cup.closest('.rack');
+      if (rack && rack.classList.contains('rack-locked')) return;
       socket.emit('party:toggle-cup', {
         code,
         team: parseInt(cup.dataset.team, 10),
         index: parseInt(cup.dataset.index, 10),
       });
     });
+
+    if (missBtn) {
+      missBtn.addEventListener('click', () => {
+        if (missBtn.disabled) return;
+        socket.emit('party:miss', { code });
+      });
+    }
   }
 })();

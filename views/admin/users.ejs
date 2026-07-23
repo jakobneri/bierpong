@@ -19,34 +19,43 @@
       <% users.forEach(u => { %>
         <tr>
           <td>
-            <a href="/stats/<%= u.username %>"><%= u.username %></a>
-            <% if (u.is_admin) { %><span class="badge">Admin</span><% } %>
+            <% if (u.is_management) { %>
+              <%= u.username %>
+            <% } else { %>
+              <a href="/stats/<%= u.username %>"><%= u.username %></a>
+            <% } %>
+            <% if (u.is_management) { %><span class="badge">Management</span>
+            <% } else if (u.is_admin) { %><span class="badge">Admin</span><% } %>
             <% if (!u.is_active) { %><span class="badge waiting">deaktiviert</span><% } %>
           </td>
           <td><%= u.created_at %></td>
-          <td><%= u.games %></td>
+          <td><%= u.is_management ? '&mdash;' : u.games %></td>
           <td><%= u.is_active ? 'aktiv' : 'deaktiviert' %></td>
           <td class="admin-actions">
-            <form action="/admin/users/<%= u.id %>/toggle-admin" method="POST" class="inline-form">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-              <button type="submit" class="button small secondary">
-                <%= u.is_admin ? 'Admin entziehen' : 'Zum Admin machen' %>
-              </button>
-            </form>
-            <form action="/admin/users/<%= u.id %>/toggle-active" method="POST" class="inline-form">
-              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-              <button type="submit" class="button small <%= u.is_active ? 'danger' : '' %>">
-                <%= u.is_active ? 'Deaktivieren' : 'Aktivieren' %>
-              </button>
-            </form>
-            <details class="reset-pw">
-              <summary class="button small secondary">Passwort setzen</summary>
-              <form action="/admin/users/<%= u.id %>/reset-password" method="POST" class="inline-form reset-pw-form">
+            <% if (u.is_management) { %>
+              <span class="hint small">gesteuert über ADMIN_PASSWORD</span>
+            <% } else { %>
+              <form action="/admin/users/<%= u.id %>/toggle-admin" method="POST" class="inline-form">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-                <input type="password" name="newPassword" placeholder="Neues Passwort" minlength="6" required />
-                <button type="submit" class="button small">Setzen</button>
+                <button type="submit" class="button small secondary">
+                  <%= u.is_admin ? 'Admin entziehen' : 'Zum Admin machen' %>
+                </button>
               </form>
-            </details>
+              <form action="/admin/users/<%= u.id %>/toggle-active" method="POST" class="inline-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="button small <%= u.is_active ? 'danger' : '' %>">
+                  <%= u.is_active ? 'Deaktivieren' : 'Aktivieren' %>
+                </button>
+              </form>
+              <details class="reset-pw">
+                <summary class="button small secondary">Passwort setzen</summary>
+                <form action="/admin/users/<%= u.id %>/reset-password" method="POST" class="inline-form reset-pw-form">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <input type="password" name="newPassword" placeholder="Neues Passwort" minlength="6" required />
+                  <button type="submit" class="button small">Setzen</button>
+                </form>
+              </details>
+            <% } %>
           </td>
         </tr>
       <% }) %>

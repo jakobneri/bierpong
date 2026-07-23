@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, blockManagement } = require('../middleware/auth');
 const { csrfProtect } = require('../middleware/csrf');
 const { RACK_SIZE } = require('../partyState');
 
@@ -57,11 +57,11 @@ function renderSolo(req, res, error, status) {
   });
 }
 
-router.get('/solo', requireAuth, (req, res) => {
+router.get('/solo', requireAuth, blockManagement, (req, res) => {
   renderSolo(req, res, null);
 });
 
-router.post('/solo', requireAuth, csrfProtect, (req, res) => {
+router.post('/solo', requireAuth, blockManagement, csrfProtect, (req, res) => {
   const shotsMade = parseInt(req.body.shotsMade, 10);
   const shotsTaken = parseInt(req.body.shotsTaken, 10);
 

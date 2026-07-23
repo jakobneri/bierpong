@@ -12,8 +12,6 @@ const overviewStmt = {
   users: db.prepare('SELECT COUNT(*) AS c FROM users'),
   activeUsers: db.prepare('SELECT COUNT(*) AS c FROM users WHERE is_active = 1'),
   confirmedMatches: db.prepare("SELECT COUNT(*) AS c FROM matches WHERE status = 'confirmed'"),
-  pendingMatches: db.prepare("SELECT COUNT(*) AS c FROM matches WHERE status = 'pending'"),
-  rejectedMatches: db.prepare("SELECT COUNT(*) AS c FROM matches WHERE status = 'rejected'"),
   liveParties: db.prepare("SELECT COUNT(*) AS c FROM parties WHERE status IN ('waiting', 'active')"),
   recentUsers: db.prepare('SELECT username, created_at, is_admin FROM users ORDER BY id DESC LIMIT 8'),
   recentMatches: db.prepare(`
@@ -46,8 +44,6 @@ router.get('/', (req, res) => {
       users: overviewStmt.users.get().c,
       activeUsers: overviewStmt.activeUsers.get().c,
       confirmedMatches: overviewStmt.confirmedMatches.get().c,
-      pendingMatches: overviewStmt.pendingMatches.get().c,
-      rejectedMatches: overviewStmt.rejectedMatches.get().c,
       liveParties: overviewStmt.liveParties.get().c,
     },
     recentUsers: overviewStmt.recentUsers.all(),
@@ -57,7 +53,7 @@ router.get('/', (req, res) => {
 
 const usersListStmt = db.prepare(`
   SELECT
-    u.id, u.username, u.created_at, u.is_admin, u.is_active,
+    u.id, u.username, u.created_at, u.is_admin, u.is_active, u.is_management,
     COUNT(m.id) AS games
   FROM users u
   LEFT JOIN match_players mp ON mp.user_id = u.id
@@ -85,6 +81,9 @@ router.post('/users/:id/toggle-admin', csrfProtect, (req, res) => {
   const target = getUserByIdStmt.get(targetId);
   if (!target) return renderUsersWithMessage(res, 404, null, 'Nutzer nicht gefunden.');
 
+  if (target.is_management) {
+    return renderUsersWithMessage(res, 400, null, 'Dieser Management-Account wird über ADMIN_PASSWORD in der .env gesteuert.');
+  }
   if (targetId === req.session.user.id && target.is_admin) {
     return renderUsersWithMessage(res, 400, null, 'Du kannst dir nicht selbst die Admin-Rechte entziehen.');
   }
@@ -101,6 +100,9 @@ router.post('/users/:id/toggle-active', csrfProtect, (req, res) => {
   const target = getUserByIdStmt.get(targetId);
   if (!target) return renderUsersWithMessage(res, 404, null, 'Nutzer nicht gefunden.');
 
+  if (target.is_management) {
+    return renderUsersWithMessage(res, 400, null, 'Dieser Management-Account wird über ADMIN_PASSWORD in der .env gesteuert.');
+  }
   if (targetId === req.session.user.id) {
     return renderUsersWithMessage(res, 400, null, 'Du kannst deinen eigenen Account nicht deaktivieren.');
   }
@@ -113,6 +115,10 @@ router.post('/users/:id/reset-password', csrfProtect, async (req, res) => {
   const targetId = parseInt(req.params.id, 10);
   const target = getUserByIdStmt.get(targetId);
   if (!target) return renderUsersWithMessage(res, 404, null, 'Nutzer nicht gefunden.');
+
+  if (target.is_management) {
+    return renderUsersWithMessage(res, 400, null, 'Das Passwort dieses Accounts wird über ADMIN_PASSWORD in der .env gesetzt.');
+  }
 
   const newPassword = req.body.newPassword || '';
   if (newPassword.length < 6) {

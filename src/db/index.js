@@ -65,6 +65,8 @@ db.exec(`
     rack_size INTEGER NOT NULL DEFAULT 10,
     team1_cups TEXT NOT NULL DEFAULT '[]',
     team2_cups TEXT NOT NULL DEFAULT '[]',
+    current_turn_team INTEGER NOT NULL DEFAULT 1 CHECK (current_turn_team IN (1, 2)),
+    throws_this_turn INTEGER NOT NULL DEFAULT 0,
     match_id INTEGER REFERENCES matches(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     started_at TEXT,
@@ -104,12 +106,34 @@ function ensureColumn(table, column, definition) {
 
 ensureColumn('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('users', 'is_active', 'INTEGER NOT NULL DEFAULT 1');
+ensureColumn('users', 'is_management', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('matches', 'party_id', 'INTEGER REFERENCES parties(id)');
 ensureColumn('solo_sessions', 'cup_hits', "TEXT NOT NULL DEFAULT '[0,0,0,0,0,0,0,0,0,0]'");
+ensureColumn('parties', 'current_turn_team', 'INTEGER NOT NULL DEFAULT 1');
+ensureColumn('parties', 'throws_this_turn', 'INTEGER NOT NULL DEFAULT 0');
+
+// If ADMIN_PASSWORD is set, keep a dedicated "admin" account in sync with
+// it on every startup. This account is a pure management login (see
+// is_management) - it never plays, so it never shows up in stats or the
+// leaderboard.
+if (process.env.ADMIN_PASSWORD) {
+  const bcrypt = require('bcryptjs');
+  const passwordHash = bcrypt.hashSync(process.env.ADMIN_PASSWORD, 12);
+  const existingAdmin = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+  if (existingAdmin) {
+    db.prepare('UPDATE users SET password_hash = ?, is_admin = 1, is_management = 1, is_active = 1 WHERE id = ?')
+      .run(passwordHash, existingAdmin.id);
+  } else {
+    db.prepare(
+      'INSERT INTO users (username, password_hash, is_admin, is_management, is_active) VALUES (?, ?, 1, 1, 1)'
+    ).run('admin', passwordHash);
+  }
+}
 
 // Bootstrap: if no admin exists yet (fresh install or upgrade of an
-// existing database), promote the earliest-registered user so the admin
-// dashboard is reachable without manual SQL surgery.
+// existing database, and no ADMIN_PASSWORD configured), promote the
+// earliest-registered user so the admin dashboard is reachable without
+// manual SQL surgery.
 const adminCount = db.prepare('SELECT COUNT(*) AS c FROM users WHERE is_admin = 1').get().c;
 if (adminCount === 0) {
   const firstUser = db.prepare('SELECT id FROM users ORDER BY id ASC LIMIT 1').get();

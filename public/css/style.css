@@ -315,16 +315,30 @@ button:disabled, .button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .rack {
   display: flex;
-  flex-direction: column-reverse;
+  /* Team 1's apex points down toward Team 2, and vice versa, so the two
+     racks face each other like on a real table instead of both pointing
+     the same way. */
+  flex-direction: column;
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
+}
+
+.rack[data-rack="2"] {
+  flex-direction: column-reverse;
 }
 
 .rack-row {
   display: flex;
   gap: 0.5rem;
   justify-content: center;
+}
+
+.rack-locked .cup,
+.rack-own .cup {
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.55;
 }
 
 .cup {
@@ -346,6 +360,26 @@ button:disabled, .button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 #party-live-banner {
   margin-top: 1rem;
+}
+
+.turn-banner {
+  text-align: center;
+  font-weight: 700;
+  padding: 0.6rem;
+  margin: 0.5rem 0 1rem;
+  border-radius: 8px;
+  background: var(--border);
+  color: var(--dark);
+}
+.turn-banner.my-turn {
+  background: var(--success);
+  color: white;
+}
+
+.party-miss-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 0.75rem;
 }
 
 .solo-tracker {

@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const db = require('../db');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, blockManagement } = require('../middleware/auth');
 const { csrfProtect } = require('../middleware/csrf');
 const {
   RACK_SIZE,
@@ -32,11 +32,11 @@ const startPartyStmt = db.prepare("UPDATE parties SET status = 'active', started
 module.exports = function createPartyRouter(io) {
   const router = express.Router();
 
-  router.get('/party/new', requireAuth, (req, res) => {
+  router.get('/party/new', requireAuth, blockManagement, (req, res) => {
     res.render('party/new', { title: 'Live-Party starten', error: null });
   });
 
-  router.post('/party/new', requireAuth, csrfProtect, (req, res) => {
+  router.post('/party/new', requireAuth, blockManagement, csrfProtect, (req, res) => {
     const mode = req.body.mode === '2v2' ? '2v2' : '1v1';
 
     const createParty = db.transaction(() => {
@@ -60,11 +60,11 @@ module.exports = function createPartyRouter(io) {
     res.redirect(`/party/${code}`);
   });
 
-  router.get('/party/join', requireAuth, (req, res) => {
+  router.get('/party/join', requireAuth, blockManagement, (req, res) => {
     res.render('party/join', { title: 'Party beitreten', error: null });
   });
 
-  router.post('/party/join', requireAuth, csrfProtect, (req, res) => {
+  router.post('/party/join', requireAuth, blockManagement, csrfProtect, (req, res) => {
     const code = (req.body.code || '').trim().toUpperCase();
     const party = getPartyByCode.get(code);
     if (!party) {
@@ -81,17 +81,21 @@ module.exports = function createPartyRouter(io) {
     }
     const state = buildPartyState(party);
     const myId = req.session.user.id;
-    const isPlayer = state.players.team1.some((p) => p.id === myId) || state.players.team2.some((p) => p.id === myId);
+    const onTeam1 = state.players.team1.some((p) => p.id === myId);
+    const onTeam2 = state.players.team2.some((p) => p.id === myId);
+    const isPlayer = onTeam1 || onTeam2;
+    const myTeam = onTeam1 ? 1 : (onTeam2 ? 2 : null);
 
     res.render('party/board', {
       title: `Party ${party.code}`,
       state,
       isPlayer,
+      myTeam,
       isCreator: party.created_by === myId,
     });
   });
 
-  router.post('/party/:code/join', requireAuth, csrfProtect, (req, res) => {
+  router.post('/party/:code/join', requireAuth, blockManagement, csrfProtect, (req, res) => {
     const code = req.params.code.toUpperCase();
     const party = getPartyByCode.get(code);
     if (!party) return res.status(404).render('error', { title: 'Nicht gefunden', message: 'Diese Party gibt es nicht (mehr).' });

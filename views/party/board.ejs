@@ -6,7 +6,8 @@
 <div id="party-root"
   data-code="<%= state.code %>"
   data-status="<%= state.status %>"
-  data-is-player="<%= isPlayer %>">
+  data-is-player="<%= isPlayer %>"
+  data-my-team="<%= myTeam || '' %>">
 
   <% if (state.status === 'waiting') { %>
     <div class="card">
@@ -51,9 +52,17 @@
       <p class="hint">Warte, bis der Host das Spiel startet...</p>
     <% } %>
   <% } else if (state.status === 'active') { %>
+    <% const isMyTurn = myTeam !== null && myTeam === state.currentTurnTeam;
+       const rackClass = (team) => {
+         const own = team === myTeam;
+         const tappable = isPlayer && isMyTurn && !own;
+         return `rack${own ? ' rack-own' : ''}${tappable ? '' : ' rack-locked'}`;
+       };
+       const turnTeamNames = state.players[`team${state.currentTurnTeam}`].map(p => p.username).join(' & ');
+    %>
     <div class="card cup-board">
       <h2><%= state.players.team1.map(p => p.username).join(' & ') %> (Team 1)</h2>
-      <div class="rack" data-rack="1">
+      <div class="<%= rackClass(1) %>" data-rack="1">
         <% [4,3,2,1].reduce((idx, rowSize) => { %>
           <div class="rack-row">
             <% for (let i = 0; i < rowSize; i++) { %>
@@ -63,8 +72,14 @@
         <% return idx + rowSize; }, 0); %>
       </div>
 
+      <div class="turn-banner <%= isMyTurn ? 'my-turn' : '' %>" id="party-turn-banner">
+        <%= isMyTurn
+          ? `Du bist dran! (Wurf ${state.throwsThisTurn + 1}/${state.throwsPerTurn})`
+          : `${turnTeamNames} ist dran (Wurf ${state.throwsThisTurn + 1}/${state.throwsPerTurn})` %>
+      </div>
+
       <h2><%= state.players.team2.map(p => p.username).join(' & ') %> (Team 2)</h2>
-      <div class="rack" data-rack="2">
+      <div class="<%= rackClass(2) %>" data-rack="2">
         <% [4,3,2,1].reduce((idx, rowSize) => { %>
           <div class="rack-row">
             <% for (let i = 0; i < rowSize; i++) { %>
@@ -73,7 +88,11 @@
           </div>
         <% return idx + rowSize; }, 0); %>
       </div>
-      <p class="hint">Tippe einen Becher an, sobald er getroffen wurde. Änderungen sind für alle sofort sichtbar.</p>
+
+      <% if (isPlayer) { %>
+        <button type="button" id="party-miss-btn" class="solo-btn miss-btn party-miss-btn" <%= isMyTurn ? '' : 'disabled' %>>DANEBEN</button>
+      <% } %>
+      <p class="hint">Du triffst nur die Becher der Gegenseite. Nach <%= state.throwsPerTurn %> Wurf/Würfen ist die andere Seite dran.</p>
     </div>
   <% } else { %>
     <div class="card">

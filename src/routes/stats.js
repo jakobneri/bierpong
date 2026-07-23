@@ -15,7 +15,7 @@ const leaderboardStmt = db.prepare(`
     SUM(CASE WHEN mp.team = 1 THEN m.team2_score ELSE m.team1_score END) AS cups_against
   FROM match_players mp
   JOIN matches m ON m.id = mp.match_id AND m.status = 'confirmed'
-  JOIN users u ON u.id = mp.user_id
+  JOIN users u ON u.id = mp.user_id AND u.is_management = 0
   GROUP BY u.id
   ORDER BY (CAST(wins AS REAL) / games) DESC, games DESC, u.username ASC
 `);
