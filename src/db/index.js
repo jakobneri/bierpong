@@ -105,6 +105,7 @@ function ensureColumn(table, column, definition) {
 ensureColumn('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('users', 'is_active', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('matches', 'party_id', 'INTEGER REFERENCES parties(id)');
+ensureColumn('solo_sessions', 'cup_hits', "TEXT NOT NULL DEFAULT '[0,0,0,0,0,0,0,0,0,0]'");
 
 // Bootstrap: if no admin exists yet (fresh install or upgrade of an
 // existing database), promote the earliest-registered user so the admin

@@ -1,26 +1,38 @@
 <%- include('partials/header') %>
 
 <h1>Solo-Training</h1>
-<p class="hint">Trackt deine eigene Trefferquote gegen unbekannte Gegner &mdash; kein Account für die Gegenseite nötig.</p>
+<p class="hint">Trackt deine eigene Trefferquote gegen unbekannte Gegner &mdash; kein Account für die Gegenseite nötig. Tippe den Becher an, den du getroffen hast.</p>
 <% if (error) { %><p class="error"><%= error %></p><% } %>
 
-<div class="card solo-tracker" id="solo-tracker">
+<div class="card solo-tracker" id="solo-tracker" data-rack-size="<%= rackSize %>">
   <div class="solo-tally">
     <span id="solo-made">0</span> / <span id="solo-taken">0</span> Treffer
     <span id="solo-pct">(0%)</span>
   </div>
+
+  <div class="rack" id="solo-rack">
+    <% [4,3,2,1].reduce((idx, rowSize) => { %>
+      <div class="rack-row">
+        <% for (let i = 0; i < rowSize; i++) { %>
+          <button type="button" class="cup" data-index="<%= idx + i %>" aria-label="Becher <%= idx + i + 1 %>"></button>
+        <% } %>
+      </div>
+    <% return idx + rowSize; }, 0); %>
+  </div>
+
   <div class="solo-buttons">
-    <button type="button" id="solo-hit" class="solo-btn hit-btn">TREFFER</button>
     <button type="button" id="solo-miss" class="solo-btn miss-btn">DANEBEN</button>
   </div>
   <div class="solo-controls">
-    <button type="button" id="solo-undo" class="button small secondary">Rückgängig</button>
+    <button type="button" id="solo-undo-miss" class="button small secondary">Fehlwurf rückgängig</button>
+    <button type="button" id="solo-new-rack" class="button small secondary">Neues Rack</button>
     <button type="button" id="solo-reset" class="button small secondary">Zurücksetzen</button>
   </div>
   <form action="/solo" method="POST" id="solo-save-form">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
     <input type="hidden" name="shotsMade" id="solo-shots-made" value="0" />
     <input type="hidden" name="shotsTaken" id="solo-shots-taken" value="0" />
+    <input type="hidden" name="cupHits" id="solo-cup-hits" value="[0,0,0,0,0,0,0,0,0,0]" />
     <button type="submit" class="button" id="solo-save-btn" disabled>Sitzung speichern</button>
   </form>
 </div>
@@ -35,6 +47,28 @@
     <span class="stat-value"><%= totals.accuracy.toFixed(1) %>%</span>
   </div>
 </div>
+
+<h2>Auswertung: Welche Becher triffst du am öftesten?</h2>
+<% if (totals.made === 0) { %>
+  <p class="hint">Noch keine Treffer gespeichert &mdash; nach der ersten Sitzung erscheint hier deine Trefferverteilung.</p>
+<% } else { %>
+  <div class="card">
+    <div class="rack heatmap-rack">
+      <% [4,3,2,1].reduce((idx, rowSize) => { %>
+        <div class="rack-row">
+          <% for (let i = 0; i < rowSize; i++) {
+               const count = cupTotals[idx + i];
+               const ratio = count / cupTotalsMax;
+               const level = count === 0 ? 0 : Math.max(1, Math.ceil(ratio * 4));
+          %>
+            <div class="cup heat-cup heat-<%= level %>" title="<%= count %> Treffer"><%= count %></div>
+          <% } %>
+        </div>
+      <% return idx + rowSize; }, 0); %>
+    </div>
+    <p class="hint">Zahl im Becher = Anzahl Treffer auf dieser Position, über alle gespeicherten Sitzungen.</p>
+  </div>
+<% } %>
 
 <h2>Letzte Sitzungen</h2>
 <% if (sessions.length === 0) { %>

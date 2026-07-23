@@ -361,12 +361,12 @@ button:disabled, .button:disabled { opacity: 0.5; cursor: not-allowed; }
 .solo-buttons {
   display: flex;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin: 1rem 0;
 }
 
 .solo-btn {
   flex: 1;
-  min-height: 96px;
+  min-height: 72px;
   border: none;
   border-radius: 14px;
   color: white;
@@ -376,15 +376,34 @@ button:disabled, .button:disabled { opacity: 0.5; cursor: not-allowed; }
   cursor: pointer;
 }
 .solo-btn:active { transform: scale(0.96); }
-.hit-btn { background: var(--success); }
 .miss-btn { background: var(--danger); }
 
 .solo-controls {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 0.6rem;
   margin-bottom: 1.25rem;
 }
+
+.heatmap-rack {
+  margin-bottom: 0.5rem;
+}
+
+.heat-cup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--dark);
+  cursor: default;
+}
+.heat-cup.heat-0 { background: #fdf6ec; }
+.heat-cup.heat-1 { background: #f6d9a8; }
+.heat-cup.heat-2 { background: #eeb85e; }
+.heat-cup.heat-3 { background: #d98324; color: white; }
+.heat-cup.heat-4 { background: #b5680f; color: white; }
 
 
 .table-wrap {
