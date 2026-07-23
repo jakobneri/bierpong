@@ -1,0 +1,47 @@
+<%- include('partials/header') %>
+
+<h1>Statistik: <%= stats.username %></h1>
+
+<div class="grid">
+  <div class="card stat-card">
+    <span class="stat-label">Spiele</span>
+    <span class="stat-value"><%= stats.games %></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Siege</span>
+    <span class="stat-value"><%= stats.wins %></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Niederlagen</span>
+    <span class="stat-value"><%= stats.losses %></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Winrate</span>
+    <span class="stat-value"><%= stats.winRate.toFixed(1) %>%</span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Becher (F/G)</span>
+    <span class="stat-value"><%= stats.cups_for %> / <%= stats.cups_against %></span>
+  </div>
+</div>
+
+<h2>Letzte Spiele</h2>
+<% if (history.length === 0) { %>
+  <p class="hint">Keine bestätigten Spiele.</p>
+<% } else { %>
+  <ul class="match-list">
+    <% history.forEach(m => { %>
+      <li class="card match-item">
+        <div>
+          <strong><%= m.players.team1.join(' & ') %></strong> vs
+          <strong><%= m.players.team2.join(' & ') %></strong>
+          &mdash; <%= m.team1_score %> : <%= m.team2_score %>
+          <span class="badge">Team <%= m.winner %> gewann</span>
+        </div>
+        <div class="hint small"><%= m.resolved_at %></div>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>
+
+<%- include('partials/footer') %>

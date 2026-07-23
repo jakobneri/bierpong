@@ -1,0 +1,36 @@
+<%- include('partials/header') %>
+
+<h1>Bestenliste</h1>
+
+<% if (rows.length === 0) { %>
+  <p class="hint">Noch keine bestätigten Spiele vorhanden.</p>
+<% } else { %>
+  <table class="card table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Spieler</th>
+        <th>Spiele</th>
+        <th>Siege</th>
+        <th>Niederlagen</th>
+        <th>Winrate</th>
+        <th>Becher (F/G)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% rows.forEach((r, i) => { %>
+        <tr>
+          <td><%= i + 1 %></td>
+          <td><a href="/stats/<%= r.username %>"><%= r.username %></a></td>
+          <td><%= r.games %></td>
+          <td><%= r.wins %></td>
+          <td><%= r.losses %></td>
+          <td><%= r.winRate.toFixed(1) %>%</td>
+          <td><%= r.cups_for %> / <%= r.cups_against %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } %>
+
+<%- include('partials/footer') %>

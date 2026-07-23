@@ -1,0 +1,16 @@
+services:
+  bierpong:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATA_DIR=/data
+      - SESSION_SECRET=${SESSION_SECRET}
+    volumes:
+      - bierpong-data:/data
+
+volumes:
+  bierpong-data:

@@ -1,0 +1,17 @@
+<%- include('partials/header', { user: user, csrfToken: csrfToken }) %>
+
+<h1>Login</h1>
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+<form action="/login" method="POST" class="card form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <label>Benutzername
+    <input type="text" name="username" required autofocus autocomplete="username" />
+  </label>
+  <label>Passwort
+    <input type="password" name="password" required autocomplete="current-password" />
+  </label>
+  <button type="submit">Einloggen</button>
+</form>
+<p>Noch keinen Account? <a href="/register">Jetzt registrieren</a></p>
+
+<%- include('partials/footer') %>

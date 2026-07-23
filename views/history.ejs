@@ -1,0 +1,23 @@
+<%- include('partials/header') %>
+
+<h1>Spielverlauf</h1>
+
+<% if (matches.length === 0) { %>
+  <p class="hint">Noch keine bestätigten Spiele.</p>
+<% } else { %>
+  <ul class="match-list">
+    <% matches.forEach(m => { %>
+      <li class="card match-item">
+        <div>
+          <strong><%= m.players.team1.join(' & ') %></strong> vs
+          <strong><%= m.players.team2.join(' & ') %></strong>
+          &mdash; <%= m.team1_score %> : <%= m.team2_score %>
+          <span class="badge">Team <%= m.winner %> gewann</span>
+        </div>
+        <div class="hint small"><%= m.resolved_at %></div>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>
+
+<%- include('partials/footer') %>

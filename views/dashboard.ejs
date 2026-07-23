@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+
+<h1>Willkommen, <%= user.username %>!</h1>
+
+<div class="grid">
+  <div class="card stat-card">
+    <span class="stat-label">Spiele (bestätigt)</span>
+    <span class="stat-value"><%= stats.games %></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Siege</span>
+    <span class="stat-value"><%= stats.wins %></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Niederlagen</span>
+    <span class="stat-value"><%= stats.losses %></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Winrate</span>
+    <span class="stat-value"><%= stats.winRate.toFixed(1) %>%</span>
+  </div>
+</div>
+
+<% if (pendingCount > 0) { %>
+  <p class="notice"><%= pendingCount %> Spiel(e) warten auf deine Bestätigung. <a href="/matches/pending">Jetzt ansehen</a></p>
+<% } %>
+
+<div class="actions">
+  <a class="button" href="/matches/new">+ Neues Spiel eintragen</a>
+  <a class="button secondary" href="/stats">Bestenliste ansehen</a>
+</div>
+
+<%- include('partials/footer') %>

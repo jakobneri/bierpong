@@ -1,0 +1,21 @@
+<%- include('partials/header') %>
+
+<h1>Registrieren</h1>
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+<form action="/register" method="POST" class="card form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <label>Benutzername
+    <input type="text" name="username" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+"
+      value="<%= form.username || '' %>" autofocus autocomplete="username" />
+  </label>
+  <label>Passwort
+    <input type="password" name="password" required minlength="6" autocomplete="new-password" />
+  </label>
+  <label>Passwort bestätigen
+    <input type="password" name="passwordConfirm" required minlength="6" autocomplete="new-password" />
+  </label>
+  <button type="submit">Account erstellen</button>
+</form>
+<p>Schon registriert? <a href="/login">Zum Login</a></p>
+
+<%- include('partials/footer') %>
