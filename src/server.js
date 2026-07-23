@@ -1,8 +1,10 @@
 require('dotenv').config();
 
 const path = require('path');
+const http = require('http');
 const express = require('express');
 const session = require('express-session');
+const { Server: SocketIOServer } = require('socket.io');
 const helmet = require('helmet');
 const crypto = require('crypto');
 
@@ -14,8 +16,14 @@ const { csrfToken } = require('./middleware/csrf');
 const authRoutes = require('./routes/auth');
 const matchRoutes = require('./routes/matches');
 const statsRoutes = require('./routes/stats');
+const adminRoutes = require('./routes/admin');
+const createPartyRouter = require('./routes/party');
+const soloRoutes = require('./routes/solo');
+const initSocket = require('./socket');
 
 const app = express();
+const httpServer = http.createServer(app);
+const io = new SocketIOServer(httpServer);
 const isProduction = process.env.NODE_ENV === 'production';
 const port = process.env.PORT || 3000;
 
@@ -50,7 +58,7 @@ app.use(helmet({
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-app.use(session({
+const sessionMiddleware = session({
   store: new SqliteSessionStore(),
   secret: sessionSecret,
   name: 'bierpong.sid',
@@ -62,7 +70,12 @@ app.use(session({
     secure: isProduction,
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   },
-}));
+});
+
+app.use(sessionMiddleware);
+// Share the same session middleware with Socket.io so live-party sockets
+// know which logged-in user is behind each connection.
+io.engine.use(sessionMiddleware);
 
 app.use(attachUser);
 app.use(csrfToken);
@@ -70,6 +83,11 @@ app.use(csrfToken);
 app.use(authRoutes);
 app.use(matchRoutes);
 app.use(statsRoutes);
+app.use(soloRoutes);
+app.use('/admin', adminRoutes);
+app.use(createPartyRouter(io));
+
+initSocket(io);
 
 const dashboardStatsStmt = db.prepare(`
   SELECT
@@ -118,6 +136,6 @@ app.use((err, req, res, next) => {
   res.status(500).render('error', { title: 'Fehler', message: 'Etwas ist schiefgelaufen. Bitte später erneut versuchen.' });
 });
 
-app.listen(port, () => {
+httpServer.listen(port, () => {
   console.log(`Bierpong Tracker läuft auf Port ${port}`);
 });

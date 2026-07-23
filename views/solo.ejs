@@ -1,0 +1,55 @@
+<%- include('partials/header') %>
+
+<h1>Solo-Training</h1>
+<p class="hint">Trackt deine eigene Trefferquote gegen unbekannte Gegner &mdash; kein Account für die Gegenseite nötig.</p>
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+
+<div class="card solo-tracker" id="solo-tracker">
+  <div class="solo-tally">
+    <span id="solo-made">0</span> / <span id="solo-taken">0</span> Treffer
+    <span id="solo-pct">(0%)</span>
+  </div>
+  <div class="solo-buttons">
+    <button type="button" id="solo-hit" class="solo-btn hit-btn">TREFFER</button>
+    <button type="button" id="solo-miss" class="solo-btn miss-btn">DANEBEN</button>
+  </div>
+  <div class="solo-controls">
+    <button type="button" id="solo-undo" class="button small secondary">Rückgängig</button>
+    <button type="button" id="solo-reset" class="button small secondary">Zurücksetzen</button>
+  </div>
+  <form action="/solo" method="POST" id="solo-save-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <input type="hidden" name="shotsMade" id="solo-shots-made" value="0" />
+    <input type="hidden" name="shotsTaken" id="solo-shots-taken" value="0" />
+    <button type="submit" class="button" id="solo-save-btn" disabled>Sitzung speichern</button>
+  </form>
+</div>
+
+<div class="grid">
+  <div class="card stat-card">
+    <span class="stat-label">Gesamt Treffer</span>
+    <span class="stat-value"><%= totals.made %> / <%= totals.taken %></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Trefferquote</span>
+    <span class="stat-value"><%= totals.accuracy.toFixed(1) %>%</span>
+  </div>
+</div>
+
+<h2>Letzte Sitzungen</h2>
+<% if (sessions.length === 0) { %>
+  <p class="hint">Noch keine Sitzungen gespeichert.</p>
+<% } else { %>
+  <ul class="match-list">
+    <% sessions.forEach(s => { %>
+      <li class="card match-item">
+        <div><%= s.shots_made %> / <%= s.shots_taken %> Treffer (<%= s.accuracy.toFixed(1) %>%)</div>
+        <div class="hint small"><%= s.created_at %></div>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>
+
+<script src="/js/solo.js"></script>
+
+<%- include('partials/footer') %>

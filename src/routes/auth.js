@@ -19,6 +19,8 @@ const authLimiter = rateLimit({
 
 const getUserByUsername = db.prepare('SELECT * FROM users WHERE username = ?');
 const insertUser = db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)');
+const countUsers = db.prepare('SELECT COUNT(*) AS c FROM users');
+const makeAdmin = db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?');
 
 router.get('/register', redirectIfAuthenticated, (req, res) => {
   res.render('register', { title: 'Registrieren', error: null, form: {} });
@@ -29,7 +31,7 @@ router.post('/register', redirectIfAuthenticated, authLimiter, csrfProtect, asyn
   const password = req.body.password || '';
   const passwordConfirm = req.body.passwordConfirm || '';
 
-  const fail = (error) => res.status(400).render('register', { title: 'Registrieren', error });
+  const fail = (error) => res.status(400).render('register', { title: 'Registrieren', error, form: req.body });
 
   if (!USERNAME_RE.test(username)) {
     return fail('Benutzername muss 3-20 Zeichen lang sein (Buchstaben, Zahlen, Unterstrich).');
@@ -47,9 +49,18 @@ router.post('/register', redirectIfAuthenticated, authLimiter, csrfProtect, asyn
   const passwordHash = await bcrypt.hash(password, 12);
   const info = insertUser.run(username, passwordHash);
 
+  // First account ever registered becomes admin automatically (subsequent
+  // installs with pre-existing users are covered by the startup bootstrap
+  // in src/db/index.js).
+  let isAdmin = false;
+  if (countUsers.get().c === 1) {
+    makeAdmin.run(info.lastInsertRowid);
+    isAdmin = true;
+  }
+
   req.session.regenerate((err) => {
     if (err) return fail('Registrierung fehlgeschlagen, bitte erneut versuchen.');
-    req.session.user = { id: info.lastInsertRowid, username };
+    req.session.user = { id: info.lastInsertRowid, username, isAdmin };
     res.redirect('/dashboard');
   });
 });
@@ -73,9 +84,16 @@ router.post('/login', redirectIfAuthenticated, authLimiter, csrfProtect, async (
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) return fail();
 
+  if (!user.is_active) {
+    return res.status(403).render('login', {
+      title: 'Login',
+      error: 'Dieser Account wurde deaktiviert.',
+    });
+  }
+
   req.session.regenerate((err) => {
     if (err) return fail();
-    req.session.user = { id: user.id, username: user.username };
+    req.session.user = { id: user.id, username: user.username, isAdmin: !!user.is_admin };
     res.redirect('/dashboard');
   });
 });

@@ -1,0 +1,147 @@
+const express = require('express');
+const crypto = require('crypto');
+const db = require('../db');
+const { requireAuth } = require('../middleware/auth');
+const { csrfProtect } = require('../middleware/csrf');
+const {
+  RACK_SIZE,
+  maxPerTeam,
+  emptyRack,
+  getPartyByCode,
+  getPartyPlayersStmt,
+  buildPartyState,
+} = require('../partyState');
+
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L
+
+function generateCode() {
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)];
+  }
+  return code;
+}
+
+const insertParty = db.prepare(`
+  INSERT INTO parties (code, mode, created_by, rack_size, team1_cups, team2_cups)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
+const insertPartyPlayer = db.prepare('INSERT INTO party_players (party_id, user_id, team) VALUES (?, ?, ?)');
+const startPartyStmt = db.prepare("UPDATE parties SET status = 'active', started_at = datetime('now') WHERE id = ?");
+
+module.exports = function createPartyRouter(io) {
+  const router = express.Router();
+
+  router.get('/party/new', requireAuth, (req, res) => {
+    res.render('party/new', { title: 'Live-Party starten', error: null });
+  });
+
+  router.post('/party/new', requireAuth, csrfProtect, (req, res) => {
+    const mode = req.body.mode === '2v2' ? '2v2' : '1v1';
+
+    const createParty = db.transaction(() => {
+      let code;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        code = generateCode();
+        if (!getPartyByCode.get(code)) break;
+      }
+      const info = insertParty.run(code, mode, req.session.user.id, RACK_SIZE, emptyRack(), emptyRack());
+      insertPartyPlayer.run(info.lastInsertRowid, req.session.user.id, 1);
+      return code;
+    });
+
+    let code;
+    try {
+      code = createParty();
+    } catch (err) {
+      return res.status(400).render('party/new', { title: 'Live-Party starten', error: 'Party konnte nicht erstellt werden, bitte erneut versuchen.' });
+    }
+
+    res.redirect(`/party/${code}`);
+  });
+
+  router.get('/party/join', requireAuth, (req, res) => {
+    res.render('party/join', { title: 'Party beitreten', error: null });
+  });
+
+  router.post('/party/join', requireAuth, csrfProtect, (req, res) => {
+    const code = (req.body.code || '').trim().toUpperCase();
+    const party = getPartyByCode.get(code);
+    if (!party) {
+      return res.status(404).render('party/join', { title: 'Party beitreten', error: 'Party-Code nicht gefunden.' });
+    }
+    res.redirect(`/party/${party.code}`);
+  });
+
+  router.get('/party/:code', requireAuth, (req, res) => {
+    const code = req.params.code.toUpperCase();
+    const party = getPartyByCode.get(code);
+    if (!party) {
+      return res.status(404).render('error', { title: 'Nicht gefunden', message: 'Diese Party gibt es nicht (mehr).' });
+    }
+    const state = buildPartyState(party);
+    const myId = req.session.user.id;
+    const isPlayer = state.players.team1.some((p) => p.id === myId) || state.players.team2.some((p) => p.id === myId);
+
+    res.render('party/board', {
+      title: `Party ${party.code}`,
+      state,
+      isPlayer,
+      isCreator: party.created_by === myId,
+    });
+  });
+
+  router.post('/party/:code/join', requireAuth, csrfProtect, (req, res) => {
+    const code = req.params.code.toUpperCase();
+    const party = getPartyByCode.get(code);
+    if (!party) return res.status(404).render('error', { title: 'Nicht gefunden', message: 'Diese Party gibt es nicht (mehr).' });
+
+    if (party.status !== 'waiting') {
+      return res.redirect(`/party/${code}`);
+    }
+
+    const team = req.body.team === '2' ? 2 : 1;
+    const players = getPartyPlayersStmt.all(party.id);
+    const myId = req.session.user.id;
+    const alreadyIn = players.some((p) => p.user_id === myId);
+
+    if (!alreadyIn) {
+      const teamCount = players.filter((p) => p.team === team).length;
+      if (teamCount >= maxPerTeam(party.mode)) {
+        return res.status(400).render('error', { title: 'Team voll', message: 'Dieses Team ist bereits voll.' });
+      }
+      insertPartyPlayer.run(party.id, myId, team);
+
+      const updated = buildPartyState(getPartyByCode.get(code));
+      io.to(`party:${code}`).emit('party:state', updated);
+    }
+
+    res.redirect(`/party/${code}`);
+  });
+
+  router.post('/party/:code/start', requireAuth, csrfProtect, (req, res) => {
+    const code = req.params.code.toUpperCase();
+    const party = getPartyByCode.get(code);
+    if (!party) return res.status(404).render('error', { title: 'Nicht gefunden', message: 'Diese Party gibt es nicht (mehr).' });
+
+    if (party.created_by !== req.session.user.id || party.status !== 'waiting') {
+      return res.redirect(`/party/${code}`);
+    }
+
+    const players = getPartyPlayersStmt.all(party.id);
+    const need = maxPerTeam(party.mode);
+    const team1Count = players.filter((p) => p.team === 1).length;
+    const team2Count = players.filter((p) => p.team === 2).length;
+    if (team1Count < need || team2Count < need) {
+      return res.redirect(`/party/${code}`);
+    }
+
+    startPartyStmt.run(party.id);
+    const updated = buildPartyState(getPartyByCode.get(code));
+    io.to(`party:${code}`).emit('party:state', updated);
+
+    res.redirect(`/party/${code}`);
+  });
+
+  return router;
+};

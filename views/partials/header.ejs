@@ -2,21 +2,28 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title><%= title %> · Bierpong Tracker</title>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="/">🍺 Bierpong Tracker</a>
-    <nav>
+    <input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" />
+    <label for="nav-toggle" class="nav-toggle-label" aria-label="Menü öffnen/schließen">☰</label>
+    <nav class="site-nav">
       <% if (user) { %>
         <a href="/dashboard">Dashboard</a>
+        <a href="/party/new">Live-Party</a>
+        <a href="/solo">Solo-Training</a>
         <a href="/matches/new">Neues Spiel</a>
         <a href="/matches/pending">Ausstehend</a>
         <a href="/matches/history">Verlauf</a>
         <a href="/stats">Bestenliste</a>
         <a href="/stats/<%= user.username %>">Mein Profil</a>
+        <% if (user.isAdmin) { %>
+          <a href="/admin">Admin</a>
+        <% } %>
         <form action="/logout" method="POST" class="inline-form">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
           <button type="submit" class="link-button">Logout (<%= user.username %>)</button>

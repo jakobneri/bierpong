@@ -1,0 +1,15 @@
+<%- include('../partials/header') %>
+
+<h1>Party beitreten</h1>
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+
+<form action="/party/join" method="POST" class="card form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <label>Party-Code
+    <input type="text" name="code" required maxlength="6" autocapitalize="characters"
+      autocomplete="off" class="party-code-input" autofocus />
+  </label>
+  <button type="submit">Beitreten</button>
+</form>
+
+<%- include('../partials/footer') %>

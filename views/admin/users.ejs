@@ -1,0 +1,57 @@
+<%- include('../partials/header') %>
+
+<h1>Nutzerverwaltung</h1>
+<% if (notice) { %><p class="notice"><%= notice %></p><% } %>
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+
+<div class="card table-wrap">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Seit</th>
+        <th>Spiele</th>
+        <th>Status</th>
+        <th>Aktionen</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% users.forEach(u => { %>
+        <tr>
+          <td>
+            <a href="/stats/<%= u.username %>"><%= u.username %></a>
+            <% if (u.is_admin) { %><span class="badge">Admin</span><% } %>
+            <% if (!u.is_active) { %><span class="badge waiting">deaktiviert</span><% } %>
+          </td>
+          <td><%= u.created_at %></td>
+          <td><%= u.games %></td>
+          <td><%= u.is_active ? 'aktiv' : 'deaktiviert' %></td>
+          <td class="admin-actions">
+            <form action="/admin/users/<%= u.id %>/toggle-admin" method="POST" class="inline-form">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="button small secondary">
+                <%= u.is_admin ? 'Admin entziehen' : 'Zum Admin machen' %>
+              </button>
+            </form>
+            <form action="/admin/users/<%= u.id %>/toggle-active" method="POST" class="inline-form">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="button small <%= u.is_active ? 'danger' : '' %>">
+                <%= u.is_active ? 'Deaktivieren' : 'Aktivieren' %>
+              </button>
+            </form>
+            <details class="reset-pw">
+              <summary class="button small secondary">Passwort setzen</summary>
+              <form action="/admin/users/<%= u.id %>/reset-password" method="POST" class="inline-form reset-pw-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <input type="password" name="newPassword" placeholder="Neues Passwort" minlength="6" required />
+                <button type="submit" class="button small">Setzen</button>
+              </form>
+            </details>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../partials/footer') %>

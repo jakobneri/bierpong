@@ -1,0 +1,98 @@
+<%- include('../partials/header') %>
+
+<h1>Party <%= state.code %></h1>
+<p class="hint">Code zum Teilen: <strong class="party-code"><%= state.code %></strong> &middot; Modus <%= state.mode %></p>
+
+<div id="party-root"
+  data-code="<%= state.code %>"
+  data-status="<%= state.status %>"
+  data-is-player="<%= isPlayer %>">
+
+  <% if (state.status === 'waiting') { %>
+    <div class="card">
+      <h2>Team 1</h2>
+      <ul class="player-list">
+        <% state.players.team1.forEach(p => { %><li><%= p.username %></li><% }) %>
+        <% for (let i = state.players.team1.length; i < state.maxPerTeam; i++) { %><li class="empty-slot">frei</li><% } %>
+      </ul>
+      <% if (!isPlayer && state.players.team1.length < state.maxPerTeam) { %>
+        <form action="/party/<%= state.code %>/join" method="POST" class="inline-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <input type="hidden" name="team" value="1" />
+          <button type="submit" class="button small">Team 1 beitreten</button>
+        </form>
+      <% } %>
+    </div>
+
+    <div class="card">
+      <h2>Team 2</h2>
+      <ul class="player-list">
+        <% state.players.team2.forEach(p => { %><li><%= p.username %></li><% }) %>
+        <% for (let i = state.players.team2.length; i < state.maxPerTeam; i++) { %><li class="empty-slot">frei</li><% } %>
+      </ul>
+      <% if (!isPlayer && state.players.team2.length < state.maxPerTeam) { %>
+        <form action="/party/<%= state.code %>/join" method="POST" class="inline-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <input type="hidden" name="team" value="2" />
+          <button type="submit" class="button small">Team 2 beitreten</button>
+        </form>
+      <% } %>
+    </div>
+
+    <% if (isCreator) { %>
+      <% const full = state.players.team1.length >= state.maxPerTeam && state.players.team2.length >= state.maxPerTeam; %>
+      <form action="/party/<%= state.code %>/start" method="POST" class="inline-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button type="submit" class="button" <%= full ? '' : 'disabled' %>>
+          <%= full ? 'Spiel starten' : 'Warte auf Spieler...' %>
+        </button>
+      </form>
+    <% } else { %>
+      <p class="hint">Warte, bis der Host das Spiel startet...</p>
+    <% } %>
+  <% } else if (state.status === 'active') { %>
+    <div class="card cup-board">
+      <h2><%= state.players.team1.map(p => p.username).join(' & ') %> (Team 1)</h2>
+      <div class="rack" data-rack="1">
+        <% [4,3,2,1].reduce((idx, rowSize) => { %>
+          <div class="rack-row">
+            <% for (let i = 0; i < rowSize; i++) { %>
+              <button type="button" class="cup <%= state.team1Cups[idx + i] ? 'hit' : '' %>" data-team="1" data-index="<%= idx + i %>" aria-label="Becher <%= idx + i + 1 %> Team 1"></button>
+            <% } %>
+          </div>
+        <% return idx + rowSize; }, 0); %>
+      </div>
+
+      <h2><%= state.players.team2.map(p => p.username).join(' & ') %> (Team 2)</h2>
+      <div class="rack" data-rack="2">
+        <% [4,3,2,1].reduce((idx, rowSize) => { %>
+          <div class="rack-row">
+            <% for (let i = 0; i < rowSize; i++) { %>
+              <button type="button" class="cup <%= state.team2Cups[idx + i] ? 'hit' : '' %>" data-team="2" data-index="<%= idx + i %>" aria-label="Becher <%= idx + i + 1 %> Team 2"></button>
+            <% } %>
+          </div>
+        <% return idx + rowSize; }, 0); %>
+      </div>
+      <p class="hint">Tippe einen Becher an, sobald er getroffen wurde. Änderungen sind für alle sofort sichtbar.</p>
+    </div>
+  <% } else { %>
+    <div class="card">
+      <h2>Spiel beendet</h2>
+      <p>
+        <strong><%= state.players.team1.map(p => p.username).join(' & ') %></strong>
+        <%= state.team2Cups.filter(Boolean).length %> : <%= state.team1Cups.filter(Boolean).length %>
+        <strong><%= state.players.team2.map(p => p.username).join(' & ') %></strong>
+      </p>
+      <% if (state.matchId) { %>
+        <p><a href="/matches/history">Im Spielverlauf ansehen</a> &middot; <a href="/stats">Bestenliste</a></p>
+      <% } %>
+    </div>
+  <% } %>
+
+  <div id="party-live-banner" class="notice hidden"></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/party.js"></script>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,19 @@
+<%- include('../partials/header') %>
+
+<h1>Live-Party starten</h1>
+<p class="hint">Alle Spieler sind gleichzeitig dabei und tracken die Becher live auf ihrem Handy.</p>
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+
+<form action="/party/new" method="POST" class="card form">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+  <fieldset>
+    <legend>Modus</legend>
+    <label class="radio"><input type="radio" name="mode" value="1v1" checked /> 1 gegen 1</label>
+    <label class="radio"><input type="radio" name="mode" value="2v2" /> 2 gegen 2</label>
+  </fieldset>
+  <button type="submit">Party erstellen</button>
+</form>
+
+<p>Schon einen Code bekommen? <a href="/party/join">Party beitreten</a></p>
+
+<%- include('../partials/footer') %>

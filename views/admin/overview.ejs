@@ -1,0 +1,68 @@
+<%- include('../partials/header') %>
+
+<h1>Admin-Dashboard</h1>
+
+<div class="grid">
+  <div class="card stat-card">
+    <span class="stat-label">Nutzer (aktiv)</span>
+    <span class="stat-value"><%= stats.activeUsers %> / <%= stats.users %></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Bestätigte Spiele</span>
+    <span class="stat-value"><%= stats.confirmedMatches %></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Ausstehend</span>
+    <span class="stat-value"><%= stats.pendingMatches %></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Abgelehnt</span>
+    <span class="stat-value"><%= stats.rejectedMatches %></span>
+  </div>
+  <div class="card stat-card">
+    <span class="stat-label">Live-Partys</span>
+    <span class="stat-value"><%= stats.liveParties %></span>
+  </div>
+</div>
+
+<div class="actions">
+  <a class="button" href="/admin/users">Nutzerverwaltung</a>
+</div>
+
+<h2>Neueste Registrierungen</h2>
+<% if (recentUsers.length === 0) { %>
+  <p class="hint">Noch keine Nutzer.</p>
+<% } else { %>
+  <ul class="match-list">
+    <% recentUsers.forEach(u => { %>
+      <li class="card match-item">
+        <div>
+          <strong><%= u.username %></strong>
+          <% if (u.is_admin) { %><span class="badge">Admin</span><% } %>
+        </div>
+        <div class="hint small"><%= u.created_at %></div>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>
+
+<h2>Neueste Spiele</h2>
+<% if (recentMatches.length === 0) { %>
+  <p class="hint">Noch keine Spiele.</p>
+<% } else { %>
+  <ul class="match-list">
+    <% recentMatches.forEach(m => { %>
+      <li class="card match-item">
+        <div>
+          <strong><%= m.players.team1.join(' & ') %></strong> vs
+          <strong><%= m.players.team2.join(' & ') %></strong>
+          &mdash; <%= m.team1_score %> : <%= m.team2_score %>
+          <span class="badge <%= m.status !== 'confirmed' ? 'waiting' : '' %>"><%= m.status %></span>
+        </div>
+        <div class="hint small"><%= m.created_at %></div>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>
+
+<%- include('../partials/footer') %>

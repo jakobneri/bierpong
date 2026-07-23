@@ -56,9 +56,65 @@ db.exec(`
     expire INTEGER NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS parties (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    mode TEXT NOT NULL CHECK (mode IN ('1v1', '2v2')),
+    status TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'active', 'finished')),
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    rack_size INTEGER NOT NULL DEFAULT 10,
+    team1_cups TEXT NOT NULL DEFAULT '[]',
+    team2_cups TEXT NOT NULL DEFAULT '[]',
+    match_id INTEGER REFERENCES matches(id),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    started_at TEXT,
+    finished_at TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS party_players (
+    party_id INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    team INTEGER NOT NULL CHECK (team IN (1, 2)),
+    joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (party_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS solo_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    shots_made INTEGER NOT NULL,
+    shots_taken INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_match_players_user ON match_players(user_id);
   CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
   CREATE INDEX IF NOT EXISTS idx_sessions_expire ON sessions(expire);
+  CREATE INDEX IF NOT EXISTS idx_party_players_user ON party_players(user_id);
+  CREATE INDEX IF NOT EXISTS idx_parties_code ON parties(code);
+  CREATE INDEX IF NOT EXISTS idx_solo_sessions_user ON solo_sessions(user_id);
 `);
+
+function ensureColumn(table, column, definition) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+ensureColumn('users', 'is_admin', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('users', 'is_active', 'INTEGER NOT NULL DEFAULT 1');
+ensureColumn('matches', 'party_id', 'INTEGER REFERENCES parties(id)');
+
+// Bootstrap: if no admin exists yet (fresh install or upgrade of an
+// existing database), promote the earliest-registered user so the admin
+// dashboard is reachable without manual SQL surgery.
+const adminCount = db.prepare('SELECT COUNT(*) AS c FROM users WHERE is_admin = 1').get().c;
+if (adminCount === 0) {
+  const firstUser = db.prepare('SELECT id FROM users ORDER BY id ASC LIMIT 1').get();
+  if (firstUser) {
+    db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(firstUser.id);
+  }
+}
 
 module.exports = db;
