@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { csrfProtect } = require('../middleware/csrf');
+const { globalCupHeatmap } = require('../statsHelpers');
 
 const router = express.Router();
 
@@ -26,6 +27,37 @@ const matchPlayersStmt = db.prepare(`
   WHERE mp.match_id = ? ORDER BY mp.team, u.username
 `);
 
+const mostActivePlayersStmt = db.prepare(`
+  SELECT
+    u.id, u.username, u.avatar_filename,
+    COUNT(*) AS games,
+    SUM(CASE WHEN mp.team = m.winner THEN 1 ELSE 0 END) AS wins,
+    SUM(CASE WHEN mp.team = m.winner THEN 0 ELSE 1 END) AS losses
+  FROM match_players mp
+  JOIN matches m ON m.id = mp.match_id AND m.status = 'confirmed'
+  JOIN users u ON u.id = mp.user_id AND u.is_management = 0
+  GROUP BY u.id
+  ORDER BY games DESC, u.username ASC
+  LIMIT 8
+`);
+
+// Most frequently played opponent pairings (either direction, so each
+// pair is only counted once via user_id ordering).
+const topRivalriesStmt = db.prepare(`
+  SELECT
+    u1.username AS username1, u2.username AS username2,
+    COUNT(*) AS games
+  FROM match_players mp1
+  JOIN match_players mp2 ON mp2.match_id = mp1.match_id
+    AND mp2.team != mp1.team AND mp2.user_id > mp1.user_id
+  JOIN matches m ON m.id = mp1.match_id AND m.status = 'confirmed'
+  JOIN users u1 ON u1.id = mp1.user_id
+  JOIN users u2 ON u2.id = mp2.user_id
+  GROUP BY mp1.user_id, mp2.user_id
+  ORDER BY games DESC, username1 ASC
+  LIMIT 8
+`);
+
 router.get('/', (req, res) => {
   const recentMatches = overviewStmt.recentMatches.all().map((m) => {
     const rows = matchPlayersStmt.all(m.id);
@@ -38,6 +70,14 @@ router.get('/', (req, res) => {
     };
   });
 
+  const mostActivePlayers = mostActivePlayersStmt.all().map((p) => ({
+    ...p,
+    winRate: p.games > 0 ? (p.wins / p.games) * 100 : 0,
+  }));
+
+  const cupHeatmap = globalCupHeatmap();
+  const cupHeatmapMax = Math.max(1, ...cupHeatmap);
+
   res.render('admin/overview', {
     title: 'Admin-Dashboard',
     stats: {
@@ -48,6 +88,10 @@ router.get('/', (req, res) => {
     },
     recentUsers: overviewStmt.recentUsers.all(),
     recentMatches,
+    mostActivePlayers,
+    cupHeatmap,
+    cupHeatmapMax,
+    topRivalries: topRivalriesStmt.all(),
   });
 });
 

@@ -53,19 +53,7 @@
   <p class="hint">Noch keine Treffer gespeichert &mdash; nach der ersten Sitzung erscheint hier deine Trefferverteilung.</p>
 <% } else { %>
   <div class="card">
-    <div class="rack heatmap-rack">
-      <% [4,3,2,1].reduce((idx, rowSize) => { %>
-        <div class="rack-row">
-          <% for (let i = 0; i < rowSize; i++) {
-               const count = cupTotals[idx + i];
-               const ratio = count / cupTotalsMax;
-               const level = count === 0 ? 0 : Math.max(1, Math.ceil(ratio * 4));
-          %>
-            <div class="cup heat-cup heat-<%= level %>" title="<%= count %> Treffer"><%= count %></div>
-          <% } %>
-        </div>
-      <% return idx + rowSize; }, 0); %>
-    </div>
+    <%- include('partials/heatmap', { cupTotals, cupTotalsMax }) %>
     <p class="hint">Zahl im Becher = Anzahl Treffer auf dieser Position, über alle gespeicherten Sitzungen.</p>
   </div>
 <% } %>

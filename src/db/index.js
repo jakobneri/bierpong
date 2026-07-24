@@ -89,12 +89,24 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS party_hits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    party_id INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+    team INTEGER NOT NULL CHECK (team IN (1, 2)),
+    cup_index INTEGER NOT NULL,
+    hit_by_user_id INTEGER NOT NULL REFERENCES users(id),
+    sequence INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_match_players_user ON match_players(user_id);
   CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
   CREATE INDEX IF NOT EXISTS idx_sessions_expire ON sessions(expire);
   CREATE INDEX IF NOT EXISTS idx_party_players_user ON party_players(user_id);
   CREATE INDEX IF NOT EXISTS idx_parties_code ON parties(code);
   CREATE INDEX IF NOT EXISTS idx_solo_sessions_user ON solo_sessions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_party_hits_user ON party_hits(hit_by_user_id);
+  CREATE INDEX IF NOT EXISTS idx_party_hits_party ON party_hits(party_id);
 `);
 
 function ensureColumn(table, column, definition) {

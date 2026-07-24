@@ -14,6 +14,16 @@ const updateTurnStmt = db.prepare('UPDATE parties SET current_turn_team = ?, thr
 const finishPartyStmt = db.prepare(
   "UPDATE parties SET status = 'finished', finished_at = datetime('now'), match_id = ? WHERE id = ?"
 );
+const countPartyHitsStmt = db.prepare('SELECT COUNT(*) AS c FROM party_hits WHERE party_id = ?');
+const insertPartyHitStmt = db.prepare(`
+  INSERT INTO party_hits (party_id, team, cup_index, hit_by_user_id, sequence)
+  VALUES (?, ?, ?, ?, ?)
+`);
+
+function recordHit(partyId, team, cupIndex, userId) {
+  const sequence = countPartyHitsStmt.get(partyId).c + 1;
+  insertPartyHitStmt.run(partyId, team, cupIndex, userId, sequence);
+}
 
 function roomFor(code) {
   return `party:${code}`;
@@ -90,6 +100,7 @@ module.exports = function initSocket(io) {
 
       targetCups[index] = true;
       updateCupsStmt[team].run(JSON.stringify(targetCups), party.id);
+      recordHit(party.id, team, index, sessionUser.id);
 
       const rackCleared = team1Cups.every(Boolean) || team2Cups.every(Boolean);
       if (!rackCleared) {

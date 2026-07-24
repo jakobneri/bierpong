@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { personalCupHeatmap, firstHitDistribution } = require('../statsHelpers');
 
 const router = express.Router();
 
@@ -50,6 +51,41 @@ const userHistoryStmt = db.prepare(`
   LIMIT 100
 `);
 
+// "Gegen wen bin ich gut": aggregate results against each opponent
+// (players on the other team in a shared confirmed match).
+const opponentStatsStmt = db.prepare(`
+  SELECT
+    u.id, u.username, u.avatar_filename,
+    COUNT(*) AS games,
+    SUM(CASE WHEN mp_self.team = m.winner THEN 1 ELSE 0 END) AS wins,
+    SUM(CASE WHEN mp_self.team = m.winner THEN 0 ELSE 1 END) AS losses
+  FROM match_players mp_self
+  JOIN matches m ON m.id = mp_self.match_id AND m.status = 'confirmed'
+  JOIN match_players mp_opp ON mp_opp.match_id = m.id AND mp_opp.team != mp_self.team
+  JOIN users u ON u.id = mp_opp.user_id
+  WHERE mp_self.user_id = ?
+  GROUP BY u.id
+  ORDER BY games DESC, u.username ASC
+`);
+
+// "Mit wem bin ich gut": aggregate results alongside each teammate
+// (players on the same team in a shared confirmed match, 2v2 only).
+const teammateStatsStmt = db.prepare(`
+  SELECT
+    u.id, u.username, u.avatar_filename,
+    COUNT(*) AS games,
+    SUM(CASE WHEN mp_self.team = m.winner THEN 1 ELSE 0 END) AS wins,
+    SUM(CASE WHEN mp_self.team = m.winner THEN 0 ELSE 1 END) AS losses
+  FROM match_players mp_self
+  JOIN matches m ON m.id = mp_self.match_id AND m.status = 'confirmed'
+  JOIN match_players mp_mate ON mp_mate.match_id = m.id
+    AND mp_mate.team = mp_self.team AND mp_mate.user_id != mp_self.user_id
+  JOIN users u ON u.id = mp_mate.user_id
+  WHERE mp_self.user_id = ?
+  GROUP BY u.id
+  ORDER BY games DESC, u.username ASC
+`);
+
 const matchPlayersStmt = db.prepare(`
   SELECT mp.team, u.username
   FROM match_players mp
@@ -91,12 +127,25 @@ router.get('/stats/:username', requireAuth, (req, res) => {
   const avatarError = req.session.avatarError || null;
   delete req.session.avatarError;
 
+  const opponents = opponentStatsStmt.all(stats.id).map(withWinRate);
+  const teammates = teammateStatsStmt.all(stats.id).map(withWinRate);
+  const cupHeatmap = personalCupHeatmap(stats.id);
+  const cupHeatmapMax = Math.max(1, ...cupHeatmap);
+  const firstHit = firstHitDistribution(stats.id);
+  const firstHitMax = Math.max(1, ...firstHit.totals);
+
   res.render('profile', {
     title: `Statistik: ${stats.username}`,
     stats: withWinRate(stats),
     history,
     isOwnProfile: stats.id === req.session.user.id,
     avatarError,
+    opponents,
+    teammates,
+    cupHeatmap,
+    cupHeatmapMax,
+    firstHit,
+    firstHitMax,
   });
 });
 

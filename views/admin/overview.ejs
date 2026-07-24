@@ -57,4 +57,55 @@
   </ul>
 <% } %>
 
+<h2>Aktivste Spieler</h2>
+<% if (mostActivePlayers.length === 0) { %>
+  <p class="hint">Noch keine bestätigten Spiele.</p>
+<% } else { %>
+  <div class="card table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Spieler</th><th>Spiele</th><th>Siege</th><th>Niederlagen</th><th>Winrate</th></tr>
+      </thead>
+      <tbody>
+        <% mostActivePlayers.forEach(p => { %>
+          <tr>
+            <td>
+              <a href="/stats/<%= p.username %>" class="leaderboard-player">
+                <%- include('../partials/avatar', { avatarFilename: p.avatar_filename, avatarUsername: p.username, avatarSize: 'sm' }) %>
+                <%= p.username %>
+              </a>
+            </td>
+            <td><%= p.games %></td>
+            <td><%= p.wins %></td>
+            <td><%= p.losses %></td>
+            <td><%= p.winRate.toFixed(0) %>%</td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<% if (topRivalries.length > 0) { %>
+  <h2>Häufigste Duelle</h2>
+  <ul class="match-list">
+    <% topRivalries.forEach(r => { %>
+      <li class="card match-item">
+        <div><strong><%= r.username1 %></strong> vs <strong><%= r.username2 %></strong></div>
+        <div class="hint small"><%= r.games %> Spiele</div>
+      </li>
+    <% }) %>
+  </ul>
+<% } %>
+
+<h2>Globale Trefferverteilung</h2>
+<% if (stats.confirmedMatches === 0) { %>
+  <p class="hint">Noch keine Live-Party-Treffer.</p>
+<% } else { %>
+  <div class="card">
+    <%- include('../partials/heatmap', { cupTotals: cupHeatmap, cupTotalsMax: cupHeatmapMax }) %>
+    <p class="hint">Zahl im Becher = Treffer auf dieser Position, über alle Spieler und Live-Partys hinweg.</p>
+  </div>
+<% } %>
+
 <%- include('../partials/footer') %>

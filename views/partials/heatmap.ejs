@@ -1,0 +1,14 @@
+<% const heatmapLabelText = typeof heatmapLabel !== 'undefined' ? heatmapLabel : 'Treffer'; %>
+<div class="rack heatmap-rack">
+  <% [4,3,2,1].reduce((idx, rowSize) => { %>
+    <div class="rack-row">
+      <% for (let i = 0; i < rowSize; i++) {
+           const count = cupTotals[idx + i];
+           const ratio = count / cupTotalsMax;
+           const level = count === 0 ? 0 : Math.max(1, Math.ceil(ratio * 4));
+      %>
+        <div class="cup heat-cup heat-<%= level %>" title="<%= count %> <%= heatmapLabelText %>"><%= count %></div>
+      <% } %>
+    </div>
+  <% return idx + rowSize; }, 0); %>
+</div>

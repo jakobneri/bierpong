@@ -38,6 +38,86 @@
   </div>
 </div>
 
+<h2>Gegen wen ist <%= stats.username %> gut?</h2>
+<% if (opponents.length === 0) { %>
+  <p class="hint">Noch keine Gegner mit bestätigten Spielen.</p>
+<% } else { %>
+  <div class="card table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Gegner</th><th>Spiele</th><th>Siege</th><th>Niederlagen</th><th>Winrate</th></tr>
+      </thead>
+      <tbody>
+        <% opponents.forEach(o => { %>
+          <tr>
+            <td>
+              <a href="/stats/<%= o.username %>" class="leaderboard-player">
+                <%- include('partials/avatar', { avatarFilename: o.avatar_filename, avatarUsername: o.username, avatarSize: 'sm' }) %>
+                <%= o.username %>
+              </a>
+            </td>
+            <td><%= o.games %></td>
+            <td><%= o.wins %></td>
+            <td><%= o.losses %></td>
+            <td><%= o.winRate.toFixed(0) %>%</td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<% if (teammates.length > 0) { %>
+  <h2>Mit wem ist <%= stats.username %> gut?</h2>
+  <div class="card table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Mitspieler</th><th>Spiele</th><th>Siege</th><th>Niederlagen</th><th>Winrate</th></tr>
+      </thead>
+      <tbody>
+        <% teammates.forEach(t => { %>
+          <tr>
+            <td>
+              <a href="/stats/<%= t.username %>" class="leaderboard-player">
+                <%- include('partials/avatar', { avatarFilename: t.avatar_filename, avatarUsername: t.username, avatarSize: 'sm' }) %>
+                <%= t.username %>
+              </a>
+            </td>
+            <td><%= t.games %></td>
+            <td><%= t.wins %></td>
+            <td><%= t.losses %></td>
+            <td><%= t.winRate.toFixed(0) %>%</td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<h2>Trefferverteilung</h2>
+<% if (stats.games === 0) { %>
+  <p class="hint">Noch keine Live-Party-Treffer &mdash; erscheint nach dem ersten Spiel.</p>
+<% } else { %>
+  <div class="card">
+    <%- include('partials/heatmap', { cupTotals: cupHeatmap, cupTotalsMax: cupHeatmapMax }) %>
+    <p class="hint">Zahl im Becher = Anzahl Treffer auf dieser Position, über alle Live-Party-Spiele.</p>
+  </div>
+
+  <h2>Erster Treffer</h2>
+  <% if (firstHit.totalFirstHits === 0) { %>
+    <p class="hint">Noch kein eigener Treffer in einem Spiel gelandet.</p>
+  <% } else { %>
+    <div class="card">
+      <%- include('partials/heatmap', { cupTotals: firstHit.totals, cupTotalsMax: firstHitMax, heatmapLabel: 'x als erster Treffer' }) %>
+      <p class="hint">
+        Häufigster erster Treffer: Position <%= firstHit.topIndex + 1 %>
+        (<%= firstHit.topCount %> von <%= firstHit.totalFirstHits %> Spielen,
+        <%= ((firstHit.topCount / firstHit.totalFirstHits) * 100).toFixed(0) %>%).
+      </p>
+    </div>
+  <% } %>
+<% } %>
+
 <h2>Letzte Spiele</h2>
 <% if (history.length === 0) { %>
   <p class="hint">Keine bestätigten Spiele.</p>
