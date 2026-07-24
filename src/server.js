@@ -82,6 +82,17 @@ io.engine.use(sessionMiddleware);
 app.use(attachUser);
 app.use(csrfToken);
 
+// Cache-busting query string for static assets (CSS/JS), derived from
+// process start time. CDNs in front of the app (e.g. Cloudflare) cache
+// static files at the edge by file extension regardless of origin
+// headers, so a plain redeploy can leave visitors on stale JS/CSS until
+// this changes the URL and forces a fresh fetch.
+const assetVersion = Date.now().toString(36);
+app.use((req, res, next) => {
+  res.locals.assetVersion = assetVersion;
+  next();
+});
+
 app.use(authRoutes);
 app.use(matchRoutes);
 app.use(statsRoutes);
