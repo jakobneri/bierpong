@@ -13,7 +13,7 @@ function emptyRack() {
 const getPartyByCode = db.prepare('SELECT * FROM parties WHERE code = ?');
 const getPartyById = db.prepare('SELECT * FROM parties WHERE id = ?');
 const getPartyPlayersStmt = db.prepare(`
-  SELECT pp.team, pp.user_id, u.username FROM party_players pp
+  SELECT pp.team, pp.user_id, u.username, u.avatar_filename FROM party_players pp
   JOIN users u ON u.id = pp.user_id
   WHERE pp.party_id = ? ORDER BY pp.team, pp.joined_at
 `);
@@ -33,8 +33,8 @@ function buildPartyState(party) {
     throwsThisTurn: party.throws_this_turn,
     throwsPerTurn: maxPerTeam(party.mode),
     players: {
-      team1: players.filter((p) => p.team === 1).map((p) => ({ id: p.user_id, username: p.username })),
-      team2: players.filter((p) => p.team === 2).map((p) => ({ id: p.user_id, username: p.username })),
+      team1: players.filter((p) => p.team === 1).map((p) => ({ id: p.user_id, username: p.username, avatarFilename: p.avatar_filename })),
+      team2: players.filter((p) => p.team === 2).map((p) => ({ id: p.user_id, username: p.username, avatarFilename: p.avatar_filename })),
     },
   };
 }

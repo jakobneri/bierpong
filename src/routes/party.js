@@ -1,5 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
+const QRCode = require('qrcode');
 const db = require('../db');
 const { requireAuth, blockManagement } = require('../middleware/auth');
 const { csrfProtect } = require('../middleware/csrf');
@@ -20,6 +21,16 @@ function generateCode() {
     code += CODE_ALPHABET[crypto.randomInt(CODE_ALPHABET.length)];
   }
   return code;
+}
+
+function openTeamsFor(party, players) {
+  const need = maxPerTeam(party.mode);
+  const team1Count = players.filter((p) => p.team === 1).length;
+  const team2Count = players.filter((p) => p.team === 2).length;
+  const open = [];
+  if (team1Count < need) open.push(1);
+  if (team2Count < need) open.push(2);
+  return open;
 }
 
 const insertParty = db.prepare(`
@@ -85,6 +96,7 @@ module.exports = function createPartyRouter(io) {
     const onTeam2 = state.players.team2.some((p) => p.id === myId);
     const isPlayer = onTeam1 || onTeam2;
     const myTeam = onTeam1 ? 1 : (onTeam2 ? 2 : null);
+    const players = getPartyPlayersStmt.all(party.id);
 
     res.render('party/board', {
       title: `Party ${party.code}`,
@@ -92,7 +104,34 @@ module.exports = function createPartyRouter(io) {
       isPlayer,
       myTeam,
       isCreator: party.created_by === myId,
+      openTeams: openTeamsFor(party, players),
+      joinUrl: `${req.protocol}://${req.get('host')}/party/${party.code}`,
     });
+  });
+
+  router.get('/party/:code/state.json', requireAuth, (req, res) => {
+    const code = req.params.code.toUpperCase();
+    const party = getPartyByCode.get(code);
+    if (!party) return res.status(404).json({ error: 'not found' });
+    res.set('Cache-Control', 'no-store').json(buildPartyState(party));
+  });
+
+  router.get('/party/:code/qr.svg', requireAuth, async (req, res) => {
+    const code = req.params.code.toUpperCase();
+    const party = getPartyByCode.get(code);
+    if (!party) return res.status(404).end();
+
+    const url = `${req.protocol}://${req.get('host')}/party/${code}`;
+    try {
+      const svg = await QRCode.toString(url, {
+        type: 'svg',
+        margin: 1,
+        color: { dark: '#241a12', light: '#f6efe2' },
+      });
+      res.type('image/svg+xml').set('Cache-Control', 'no-store').send(svg);
+    } catch (err) {
+      res.status(500).end();
+    }
   });
 
   router.post('/party/:code/join', requireAuth, blockManagement, csrfProtect, (req, res) => {
@@ -104,16 +143,29 @@ module.exports = function createPartyRouter(io) {
       return res.redirect(`/party/${code}`);
     }
 
-    const team = req.body.team === '2' ? 2 : 1;
     const players = getPartyPlayersStmt.all(party.id);
     const myId = req.session.user.id;
     const alreadyIn = players.some((p) => p.user_id === myId);
 
     if (!alreadyIn) {
-      const teamCount = players.filter((p) => p.team === team).length;
-      if (teamCount >= maxPerTeam(party.mode)) {
-        return res.status(400).render('error', { title: 'Team voll', message: 'Dieses Team ist bereits voll.' });
+      const openTeams = openTeamsFor(party, players);
+      if (openTeams.length === 0) {
+        return res.status(400).render('error', { title: 'Team voll', message: 'Diese Party ist bereits voll.' });
       }
+
+      // When only one team still has room, there's no real choice to make -
+      // assign it automatically instead of asking. Only trust the client's
+      // chosen team when both are actually open.
+      let team;
+      if (openTeams.length === 1) {
+        team = openTeams[0];
+      } else {
+        team = req.body.team === '2' ? 2 : 1;
+        if (!openTeams.includes(team)) {
+          return res.status(400).render('error', { title: 'Team voll', message: 'Dieses Team ist bereits voll.' });
+        }
+      }
+
       insertPartyPlayer.run(party.id, myId, team);
 
       const updated = buildPartyState(getPartyByCode.get(code));

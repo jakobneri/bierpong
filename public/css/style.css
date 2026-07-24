@@ -349,6 +349,25 @@ button:disabled, .button:disabled { opacity: 0.5; cursor: not-allowed; }
   color: var(--amber-dark);
 }
 
+.party-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.qr-code-box {
+  text-align: center;
+  max-width: 260px;
+}
+.qr-code-box img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: white;
+  padding: 0.5rem;
+}
+
 .player-list {
   list-style: none;
   padding: 0;
@@ -358,6 +377,11 @@ button:disabled, .button:disabled { opacity: 0.5; cursor: not-allowed; }
   padding: 0.3rem 0;
   border-bottom: 1px solid var(--border);
 }
+.player-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .player-list li.empty-slot {
   color: #9a8f80;
   font-style: italic;
@@ -366,6 +390,17 @@ button:disabled, .button:disabled { opacity: 0.5; cursor: not-allowed; }
 .cup-board h2 {
   font-size: 1rem;
   margin-bottom: 0.5rem;
+}
+
+.team-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.team-avatars {
+  display: flex;
+  gap: 0.25rem;
 }
 
 .rack {
@@ -415,6 +450,73 @@ button:disabled, .button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 #party-live-banner {
   margin-top: 1rem;
+}
+
+.victory-card {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  padding-top: 2rem;
+}
+
+.victory-trophy {
+  font-size: 3rem;
+  margin: 0;
+  animation: pop-in 0.5s ease-out;
+}
+
+.winner-avatars {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.winner-avatars .avatar {
+  border: 3px solid var(--amber);
+  animation: pop-in 0.6s ease-out;
+}
+
+.winner-title {
+  margin: 0.5rem 0;
+}
+
+@keyframes pop-in {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.confetti {
+  position: relative;
+  height: 0;
+  overflow: visible;
+}
+.confetti-piece {
+  position: absolute;
+  top: -20px;
+  width: 8px;
+  height: 14px;
+  opacity: 0.9;
+  animation: confetti-fall 2.2s ease-in forwards;
+}
+.c1 { left: 4%; background: #d98324; animation-delay: 0s; }
+.c2 { left: 11%; background: #2e7d32; animation-delay: 0.1s; }
+.c3 { left: 19%; background: #b3261e; animation-delay: 0.16s; }
+.c4 { left: 27%; background: #f2b247; animation-delay: 0.04s; }
+.c5 { left: 35%; background: #6b4fbb; animation-delay: 0.2s; }
+.c6 { left: 43%; background: #2e7d32; animation-delay: 0.12s; }
+.c7 { left: 51%; background: #d98324; animation-delay: 0.26s; }
+.c8 { left: 59%; background: #b3261e; animation-delay: 0.08s; }
+.c9 { left: 67%; background: #f2b247; animation-delay: 0.18s; }
+.c10 { left: 75%; background: #6b4fbb; animation-delay: 0.02s; }
+.c11 { left: 83%; background: #2e7d32; animation-delay: 0.22s; }
+.c12 { left: 91%; background: #d98324; animation-delay: 0.14s; }
+.c13 { left: 15%; background: #b3261e; animation-delay: 0.3s; }
+.c14 { left: 79%; background: #f2b247; animation-delay: 0.28s; }
+
+@keyframes confetti-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(240px) rotate(540deg); opacity: 0; }
 }
 
 .turn-banner {

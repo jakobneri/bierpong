@@ -1,54 +1,82 @@
 <%- include('../partials/header') %>
 
-<h1>Party <%= state.code %></h1>
-<p class="hint">Code zum Teilen: <strong class="party-code"><%= state.code %></strong> &middot; Modus <%= state.mode %></p>
+<h1>Live-Party</h1>
+<p class="hint party-meta">
+  Code: <strong class="party-code"><%= state.code %></strong> &middot; Modus <%= state.mode %>
+  <button type="button" id="qr-toggle-btn" class="button small secondary">QR-Code</button>
+</p>
+<div id="qr-code-box" class="card qr-code-box hidden">
+  <img src="/party/<%= state.code %>/qr.svg" width="220" height="220" alt="QR-Code zum Beitreten" />
+  <p class="hint small">Code scannen, um direkt beizutreten.</p>
+</div>
 
 <div id="party-root"
   data-code="<%= state.code %>"
   data-status="<%= state.status %>"
   data-is-player="<%= isPlayer %>"
-  data-my-team="<%= myTeam || '' %>">
+  data-my-team="<%= myTeam || '' %>"
+  data-team1-ids="<%= state.players.team1.map(p => p.id).join(',') %>"
+  data-team2-ids="<%= state.players.team2.map(p => p.id).join(',') %>">
 
   <% if (state.status === 'waiting') { %>
     <div class="card">
       <h2>Team 1</h2>
       <ul class="player-list">
-        <% state.players.team1.forEach(p => { %><li><%= p.username %></li><% }) %>
+        <% state.players.team1.forEach(p => { %>
+          <li class="player-list-item">
+            <%- include('../partials/avatar', { avatarFilename: p.avatarFilename, avatarUsername: p.username, avatarSize: 'sm' }) %>
+            <%= p.username %>
+          </li>
+        <% }) %>
         <% for (let i = state.players.team1.length; i < state.maxPerTeam; i++) { %><li class="empty-slot">frei</li><% } %>
       </ul>
-      <% if (!isPlayer && state.players.team1.length < state.maxPerTeam) { %>
-        <form action="/party/<%= state.code %>/join" method="POST" class="inline-form">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-          <input type="hidden" name="team" value="1" />
-          <button type="submit" class="button small">Team 1 beitreten</button>
-        </form>
-      <% } %>
     </div>
 
     <div class="card">
       <h2>Team 2</h2>
       <ul class="player-list">
-        <% state.players.team2.forEach(p => { %><li><%= p.username %></li><% }) %>
+        <% state.players.team2.forEach(p => { %>
+          <li class="player-list-item">
+            <%- include('../partials/avatar', { avatarFilename: p.avatarFilename, avatarUsername: p.username, avatarSize: 'sm' }) %>
+            <%= p.username %>
+          </li>
+        <% }) %>
         <% for (let i = state.players.team2.length; i < state.maxPerTeam; i++) { %><li class="empty-slot">frei</li><% } %>
       </ul>
-      <% if (!isPlayer && state.players.team2.length < state.maxPerTeam) { %>
+    </div>
+
+    <% if (!isPlayer && openTeams.length === 1) { %>
+      <form action="/party/<%= state.code %>/join" method="POST" class="inline-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <input type="hidden" name="team" value="<%= openTeams[0] %>" />
+        <button type="submit" class="button">Party beitreten</button>
+      </form>
+    <% } else if (!isPlayer && openTeams.length === 2) { %>
+      <div class="actions">
+        <form action="/party/<%= state.code %>/join" method="POST" class="inline-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <input type="hidden" name="team" value="1" />
+          <button type="submit" class="button small">Team 1 beitreten</button>
+        </form>
         <form action="/party/<%= state.code %>/join" method="POST" class="inline-form">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
           <input type="hidden" name="team" value="2" />
           <button type="submit" class="button small">Team 2 beitreten</button>
         </form>
-      <% } %>
-    </div>
+      </div>
+    <% } else if (!isPlayer && openTeams.length === 0) { %>
+      <p class="hint">Diese Party ist bereits voll.</p>
+    <% } %>
 
     <% if (isCreator) { %>
-      <% const full = state.players.team1.length >= state.maxPerTeam && state.players.team2.length >= state.maxPerTeam; %>
+      <% const full = openTeams.length === 0; %>
       <form action="/party/<%= state.code %>/start" method="POST" class="inline-form">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
         <button type="submit" class="button" <%= full ? '' : 'disabled' %>>
           <%= full ? 'Spiel starten' : 'Warte auf Spieler...' %>
         </button>
       </form>
-    <% } else { %>
+    <% } else if (isPlayer) { %>
       <p class="hint">Warte, bis der Host das Spiel startet...</p>
     <% } %>
   <% } else if (state.status === 'active') { %>
@@ -61,7 +89,14 @@
        const turnTeamNames = state.players[`team${state.currentTurnTeam}`].map(p => p.username).join(' & ');
     %>
     <div class="card cup-board">
-      <h2><%= state.players.team1.map(p => p.username).join(' & ') %> (Team 1)</h2>
+      <h2 class="team-header">
+        <span class="team-avatars">
+          <% state.players.team1.forEach(p => { %>
+            <%- include('../partials/avatar', { avatarFilename: p.avatarFilename, avatarUsername: p.username, avatarSize: 'sm' }) %>
+          <% }) %>
+        </span>
+        <%= state.players.team1.map(p => p.username).join(' & ') %> (Team 1)
+      </h2>
       <div class="<%= rackClass(1) %>" data-rack="1">
         <% [4,3,2,1].reduce((idx, rowSize) => { %>
           <div class="rack-row">
@@ -78,7 +113,14 @@
           : `${turnTeamNames} ist dran (Wurf ${state.throwsThisTurn + 1}/${state.throwsPerTurn})` %>
       </div>
 
-      <h2><%= state.players.team2.map(p => p.username).join(' & ') %> (Team 2)</h2>
+      <h2 class="team-header">
+        <span class="team-avatars">
+          <% state.players.team2.forEach(p => { %>
+            <%- include('../partials/avatar', { avatarFilename: p.avatarFilename, avatarUsername: p.username, avatarSize: 'sm' }) %>
+          <% }) %>
+        </span>
+        <%= state.players.team2.map(p => p.username).join(' & ') %> (Team 2)
+      </h2>
       <div class="<%= rackClass(2) %>" data-rack="2">
         <% [4,3,2,1].reduce((idx, rowSize) => { %>
           <div class="rack-row">
@@ -95,13 +137,24 @@
       <p class="hint">Du triffst nur die Becher der Gegenseite. Nach <%= state.throwsPerTurn %> Wurf/Würfen ist die andere Seite dran.</p>
     </div>
   <% } else { %>
-    <div class="card">
-      <h2>Spiel beendet</h2>
-      <p>
-        <strong><%= state.players.team1.map(p => p.username).join(' & ') %></strong>
-        <%= state.team2Cups.filter(Boolean).length %> : <%= state.team1Cups.filter(Boolean).length %>
-        <strong><%= state.players.team2.map(p => p.username).join(' & ') %></strong>
-      </p>
+    <% const winnerTeam = state.team1Cups.every(Boolean) ? 2 : 1;
+       const winners = state.players[`team${winnerTeam}`];
+       const losers = state.players[`team${winnerTeam === 1 ? 2 : 1}`];
+       const winnerScore = winnerTeam === 1 ? state.team2Cups.filter(Boolean).length : state.team1Cups.filter(Boolean).length;
+       const loserScore = winnerTeam === 1 ? state.team1Cups.filter(Boolean).length : state.team2Cups.filter(Boolean).length;
+    %>
+    <div class="card victory-card">
+      <div class="confetti" aria-hidden="true">
+        <% for (let i = 1; i <= 14; i++) { %><span class="confetti-piece c<%= i %>"></span><% } %>
+      </div>
+      <p class="victory-trophy">🏆</p>
+      <div class="winner-avatars">
+        <% winners.forEach(p => { %>
+          <%- include('../partials/avatar', { avatarFilename: p.avatarFilename, avatarUsername: p.username, avatarSize: 'lg' }) %>
+        <% }) %>
+      </div>
+      <h2 class="winner-title"><%= winners.map(p => p.username).join(' & ') %> gewinnt!</h2>
+      <p class="hint"><%= winnerScore %> : <%= loserScore %> gegen <%= losers.map(p => p.username).join(' & ') %></p>
       <% if (state.matchId) { %>
         <p><a href="/matches/history">Im Spielverlauf ansehen</a> &middot; <a href="/stats">Bestenliste</a></p>
       <% } %>
