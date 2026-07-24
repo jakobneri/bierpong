@@ -63,7 +63,7 @@ router.post('/register', redirectIfAuthenticated, authLimiter, csrfProtect, asyn
 
   req.session.regenerate((err) => {
     if (err) return fail('Registrierung fehlgeschlagen, bitte erneut versuchen.');
-    req.session.user = { id: info.lastInsertRowid, username, isAdmin, isManagement: false };
+    req.session.user = { id: info.lastInsertRowid, username, isAdmin, isManagement: false, avatarFilename: null };
     res.redirect('/dashboard');
   });
 });
@@ -101,6 +101,7 @@ router.post('/login', redirectIfAuthenticated, authLimiter, csrfProtect, async (
       username: user.username,
       isAdmin: !!user.is_admin,
       isManagement: !!user.is_management,
+      avatarFilename: user.avatar_filename || null,
     };
     res.redirect('/dashboard');
   });

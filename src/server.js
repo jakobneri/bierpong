@@ -19,6 +19,7 @@ const statsRoutes = require('./routes/stats');
 const adminRoutes = require('./routes/admin');
 const createPartyRouter = require('./routes/party');
 const soloRoutes = require('./routes/solo');
+const { router: accountRoutes, avatarsDir } = require('./routes/account');
 const initSocket = require('./socket');
 
 const app = express();
@@ -57,6 +58,7 @@ app.use(helmet({
 
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use('/avatars', express.static(avatarsDir, { maxAge: '30d' }));
 
 const sessionMiddleware = session({
   store: new SqliteSessionStore(),
@@ -84,6 +86,7 @@ app.use(authRoutes);
 app.use(matchRoutes);
 app.use(statsRoutes);
 app.use(soloRoutes);
+app.use(accountRoutes);
 app.use('/admin', adminRoutes);
 app.use(createPartyRouter(io));
 

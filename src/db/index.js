@@ -111,6 +111,7 @@ ensureColumn('matches', 'party_id', 'INTEGER REFERENCES parties(id)');
 ensureColumn('solo_sessions', 'cup_hits', "TEXT NOT NULL DEFAULT '[0,0,0,0,0,0,0,0,0,0]'");
 ensureColumn('parties', 'current_turn_team', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('parties', 'throws_this_turn', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('users', 'avatar_filename', 'TEXT');
 
 // If ADMIN_PASSWORD is set, keep a dedicated "admin" account in sync with
 // it on every startup. This account is a pure management login (see
@@ -141,5 +142,10 @@ if (adminCount === 0) {
     db.prepare('UPDATE users SET is_admin = 1 WHERE id = ?').run(firstUser.id);
   }
 }
+
+// Exposed so other modules (e.g. avatar uploads) can store files next to
+// the database, inside whatever volume DATA_DIR points to - public/ is
+// part of the app image/checkout and isn't persisted across deploys.
+db.dataDir = dataDir;
 
 module.exports = db;

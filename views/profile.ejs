@@ -1,6 +1,19 @@
 <%- include('partials/header') %>
 
-<h1>Statistik: <%= stats.username %></h1>
+<div class="profile-header">
+  <%- include('partials/avatar', { avatarFilename: stats.avatar_filename, avatarUsername: stats.username, avatarSize: 'lg' }) %>
+  <div>
+    <h1 class="profile-title">Statistik: <%= stats.username %></h1>
+    <% if (isOwnProfile) { %>
+      <% if (avatarError) { %><p class="error"><%= avatarError %></p><% } %>
+      <form action="/account/avatar" method="POST" enctype="multipart/form-data" class="avatar-upload-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <input type="file" name="avatar" accept="image/png,image/jpeg,image/webp,image/gif" required />
+        <button type="submit" class="button small secondary">Profilbild ändern</button>
+      </form>
+    <% } %>
+  </div>
+</div>
 
 <div class="grid">
   <div class="card stat-card">

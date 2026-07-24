@@ -1,6 +1,6 @@
 const db = require('../db');
 
-const getActiveFlagStmt = db.prepare('SELECT is_active, is_admin, is_management FROM users WHERE id = ?');
+const getActiveFlagStmt = db.prepare('SELECT is_active, is_admin, is_management, avatar_filename FROM users WHERE id = ?');
 
 function attachUser(req, res, next) {
   res.locals.user = req.session.user || null;
@@ -20,6 +20,7 @@ function requireAuth(req, res, next) {
   }
   req.session.user.isAdmin = !!row.is_admin;
   req.session.user.isManagement = !!row.is_management;
+  req.session.user.avatarFilename = row.avatar_filename || null;
   res.locals.user = req.session.user;
 
   next();

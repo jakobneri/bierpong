@@ -1,0 +1,8 @@
+<%
+/* expects locals: avatarFilename, avatarUsername, avatarSize ('sm'|'md'|'lg') */
+%>
+<% if (avatarFilename) { %>
+  <img class="avatar avatar-<%= avatarSize %>" src="/avatars/<%= avatarFilename %>" alt="<%= avatarUsername %>" />
+<% } else { %>
+  <span class="avatar avatar-<%= avatarSize %> avatar-placeholder"><%= avatarUsername.charAt(0).toUpperCase() %></span>
+<% } %>

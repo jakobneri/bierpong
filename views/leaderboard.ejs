@@ -22,7 +22,12 @@
         <% rows.forEach((r, i) => { %>
           <tr>
             <td><%= i + 1 %></td>
-            <td><a href="/stats/<%= r.username %>"><%= r.username %></a></td>
+            <td>
+              <a href="/stats/<%= r.username %>" class="leaderboard-player">
+                <%- include('partials/avatar', { avatarFilename: r.avatar_filename, avatarUsername: r.username, avatarSize: 'sm' }) %>
+                <%= r.username %>
+              </a>
+            </td>
             <td><%= r.games %></td>
             <td><%= r.wins %></td>
             <td><%= r.losses %></td>

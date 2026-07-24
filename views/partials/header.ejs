@@ -31,7 +31,12 @@
         <% } %>
         <form action="/logout" method="POST" class="inline-form">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
-          <button type="submit" class="link-button">Logout (<%= user.username %>)</button>
+          <button type="submit" class="link-button">
+            <% if (!user.isManagement) { %>
+              <span class="nav-avatar"><%- include('avatar', { avatarFilename: user.avatarFilename, avatarUsername: user.username, avatarSize: 'sm' }) %></span>
+            <% } %>
+            Logout (<%= user.username %>)
+          </button>
         </form>
       <% } else { %>
         <a href="/login">Login</a>

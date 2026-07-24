@@ -28,6 +28,9 @@ automatisch aus den bestätigten Spielen berechnet.
   Becher-Positionen am häufigsten getroffen werden.
 - Bestenliste (`/stats`) und persönliche Profile (`/stats/<username>`)
   zeigen automatisch berechnete Statistiken aus allen Live-Party-Spielen.
+  Auf dem eigenen Profil kann außerdem ein Profilbild hochgeladen werden
+  (JPG/PNG/WEBP/GIF, max. 3 MB) — sichtbar dort, in der Bestenliste und im
+  Nutzermenü.
 - **Admin-Dashboard** (`/admin`, nur für Admins sichtbar): Übersicht über
   Nutzer, Spiele und laufende Partys, plus Nutzerverwaltung (Admin-Rechte
   vergeben/entziehen, Accounts deaktivieren, Passwörter zurücksetzen). Der
@@ -109,13 +112,14 @@ setzen, damit Cookies als `secure` markiert werden (nur über HTTPS
 
 ### Backups
 
-Die komplette App-Daten liegen in einer einzigen SQLite-Datei im Volume
-`bierpong-data` (Pfad im Container: `/data/bierpong.db`). Für ein Backup
-reicht es, diese Datei regelmäßig zu kopieren, z. B.:
+Alle Daten liegen im Volume `bierpong-data`: die SQLite-Datenbank unter
+`/data/bierpong.db` und hochgeladene Profilbilder unter `/data/avatars/`.
+Für ein Backup reicht es, beides regelmäßig zu sichern, z. B.:
 
 ```bash
 docker compose exec bierpong sh -c "sqlite3 /data/bierpong.db '.backup /data/backup.db'"
 docker cp $(docker compose ps -q bierpong):/data/backup.db ./backup-$(date +%F).db
+docker cp $(docker compose ps -q bierpong):/data/avatars ./avatars-backup-$(date +%F)
 ```
 
 ## Projektstruktur
@@ -135,6 +139,7 @@ src/
     party.js             Live-Party erstellen/beitreten/starten
     solo.js              Solo-Trefferquote-Tracking
     admin.js             Admin-Übersicht + Nutzerverwaltung
+    account.js            Profilbild-Upload (multer, gespeichert in DATA_DIR/avatars)
 views/                 EJS-Templates
 public/                Statisches CSS/JS (inkl. Socket.io-Client-Logik)
 ```
