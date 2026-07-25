@@ -227,6 +227,26 @@ h1 { margin-top: 0; }
 
 .radio input { width: auto; }
 
+.preset-option {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-weight: normal;
+  margin-bottom: 0.7rem;
+}
+.preset-option input { width: auto; margin-top: 0.3rem; }
+.preset-option-text { display: flex; flex-direction: column; gap: 0.15rem; }
+
+.form select {
+  display: block;
+  width: 100%;
+  margin-top: 0.3rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
 .score-row {
   display: flex;
   gap: 1rem;
@@ -447,6 +467,18 @@ button:disabled, .button:disabled { opacity: 0.5; cursor: not-allowed; }
   border-color: #6b6055;
   opacity: 0.5;
 }
+
+.cup.bomb-exploding {
+  animation: bomb-explode 0.7s ease-out;
+}
+
+@keyframes bomb-explode {
+  0% { transform: scale(1); background: #fdf6ec; box-shadow: none; }
+  35% { transform: scale(1.5); background: #ff6b35; border-color: #ff6b35; box-shadow: 0 0 20px 8px rgba(255, 107, 53, 0.75); opacity: 1; }
+  100% { transform: scale(1); background: #9a8f80; border-color: #6b6055; box-shadow: none; opacity: 0.5; }
+}
+
+.bomb-hint { color: var(--amber-dark, #b3450b); font-weight: 600; }
 
 #party-live-banner {
   margin-top: 1rem;

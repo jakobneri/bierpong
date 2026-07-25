@@ -1,5 +1,5 @@
 const db = require('./db');
-const { getPartyByCode, getPartyPlayersStmt, buildPartyState, maxPerTeam } = require('./partyState');
+const { getPartyByCode, getPartyPlayersStmt, buildPartyState, getCupNeighbors } = require('./partyState');
 
 const insertMatch = db.prepare(`
   INSERT INTO matches (mode, created_by, team1_score, team2_score, winner, status, resolved_at, party_id)
@@ -11,18 +11,22 @@ const updateCupsStmt = {
   2: db.prepare('UPDATE parties SET team2_cups = ? WHERE id = ?'),
 };
 const updateTurnStmt = db.prepare('UPDATE parties SET current_turn_team = ?, throws_this_turn = ? WHERE id = ?');
+const updateStreakStmt = {
+  1: db.prepare('UPDATE parties SET team1_streak = ? WHERE id = ?'),
+  2: db.prepare('UPDATE parties SET team2_streak = ? WHERE id = ?'),
+};
 const finishPartyStmt = db.prepare(
   "UPDATE parties SET status = 'finished', finished_at = datetime('now'), match_id = ? WHERE id = ?"
 );
 const countPartyHitsStmt = db.prepare('SELECT COUNT(*) AS c FROM party_hits WHERE party_id = ?');
 const insertPartyHitStmt = db.prepare(`
-  INSERT INTO party_hits (party_id, team, cup_index, hit_by_user_id, sequence)
-  VALUES (?, ?, ?, ?, ?)
+  INSERT INTO party_hits (party_id, team, cup_index, hit_by_user_id, sequence, is_bomb)
+  VALUES (?, ?, ?, ?, ?, ?)
 `);
 
-function recordHit(partyId, team, cupIndex, userId) {
+function recordHit(partyId, team, cupIndex, userId, isBomb = false) {
   const sequence = countPartyHitsStmt.get(partyId).c + 1;
-  insertPartyHitStmt.run(partyId, team, cupIndex, userId, sequence);
+  insertPartyHitStmt.run(partyId, team, cupIndex, userId, sequence, isBomb ? 1 : 0);
 }
 
 function roomFor(code) {
@@ -34,9 +38,9 @@ function otherTeam(team) {
 }
 
 // Advances the turn counter for a throw just taken; flips to the other
-// team once the mode's throw allowance (1 per player) is used up.
+// team once the party's configured throw allowance is used up.
 function advanceTurn(party) {
-  const throwsPerTurn = maxPerTeam(party.mode);
+  const throwsPerTurn = party.throws_per_turn;
   let team = party.current_turn_team;
   let throwsTaken = party.throws_this_turn + 1;
   if (throwsTaken >= throwsPerTurn) {
@@ -98,9 +102,30 @@ module.exports = function initSocket(io) {
       const targetCups = team === 1 ? team1Cups : team2Cups;
       if (targetCups[index]) return; // already hit, nothing to do
 
+      const attackerTeam = requester.team;
       targetCups[index] = true;
-      updateCupsStmt[team].run(JSON.stringify(targetCups), party.id);
       recordHit(party.id, team, index, sessionUser.id);
+
+      // Bomben-Regel: trifft eine Seite zwei Mal in Folge (ohne dazwischen
+      // danebenzuwerfen), werden alle noch stehenden Nachbarbecher des
+      // zuletzt getroffenen Bechers mit vernichtet.
+      const streakBefore = attackerTeam === 1 ? party.team1_streak : party.team2_streak;
+      let streak = streakBefore + 1;
+      const bombedIndexes = [];
+
+      if (party.bomb_enabled && streak >= 2) {
+        getCupNeighbors(index).forEach((neighborIndex) => {
+          if (!targetCups[neighborIndex]) {
+            targetCups[neighborIndex] = true;
+            recordHit(party.id, team, neighborIndex, sessionUser.id, true);
+            bombedIndexes.push(neighborIndex);
+          }
+        });
+        streak = 0;
+      }
+
+      updateCupsStmt[team].run(JSON.stringify(targetCups), party.id);
+      updateStreakStmt[attackerTeam].run(streak, party.id);
 
       const rackCleared = team1Cups.every(Boolean) || team2Cups.every(Boolean);
       if (!rackCleared) {
@@ -113,6 +138,9 @@ module.exports = function initSocket(io) {
         updatedParty = getPartyByCode.get(party.code);
       }
 
+      if (bombedIndexes.length > 0) {
+        io.to(roomFor(party.code)).emit('party:bomb', { team, triggerIndex: index, bombedIndexes });
+      }
       io.to(roomFor(party.code)).emit('party:state', buildPartyState(updatedParty));
     });
 
@@ -125,6 +153,7 @@ module.exports = function initSocket(io) {
       const requester = players.find((p) => p.user_id === sessionUser.id);
       if (!requester || requester.team !== party.current_turn_team) return;
 
+      updateStreakStmt[requester.team].run(0, party.id);
       advanceTurn(party);
 
       const updatedParty = getPartyByCode.get(party.code);

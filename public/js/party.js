@@ -63,6 +63,17 @@
     });
   }
 
+  function explodeCups(rackSelector, indexes) {
+    const rack = root.querySelector(rackSelector);
+    if (!rack) return;
+    indexes.forEach((index) => {
+      const cup = rack.querySelector(`.cup[data-index="${index}"]`);
+      if (!cup) return;
+      cup.classList.add('bomb-exploding');
+      setTimeout(() => cup.classList.remove('bomb-exploding'), 700);
+    });
+  }
+
   function updateCups(rackSelector, cups) {
     const rack = root.querySelector(rackSelector);
     if (!rack) return;
@@ -155,6 +166,16 @@
   }
 
   socket.on('party:state', applyState);
+
+  socket.on('party:bomb', ({ team, bombedIndexes }) => {
+    if (!bombedIndexes || bombedIndexes.length === 0) return;
+    explodeCups(`[data-rack="${team}"]`, bombedIndexes);
+    if (banner) {
+      banner.textContent = `💣 Bombe! ${bombedIndexes.length} Nachbarbecher explodiert!`;
+      banner.classList.remove('hidden');
+      setTimeout(() => banner.classList.add('hidden'), 2500);
+    }
+  });
 
   socket.on('party:error', (message) => {
     if (banner) {

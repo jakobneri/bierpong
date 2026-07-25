@@ -8,6 +8,8 @@ const {
   RACK_SIZE,
   maxPerTeam,
   emptyRack,
+  PARTY_PRESETS,
+  resolvePartySettings,
   getPartyByCode,
   getPartyPlayersStmt,
   buildPartyState,
@@ -34,8 +36,8 @@ function openTeamsFor(party, players) {
 }
 
 const insertParty = db.prepare(`
-  INSERT INTO parties (code, mode, created_by, rack_size, team1_cups, team2_cups)
-  VALUES (?, ?, ?, ?, ?, ?)
+  INSERT INTO parties (code, mode, created_by, rack_size, team1_cups, team2_cups, throws_per_turn, bomb_enabled)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const insertPartyPlayer = db.prepare('INSERT INTO party_players (party_id, user_id, team) VALUES (?, ?, ?)');
 const startPartyStmt = db.prepare("UPDATE parties SET status = 'active', started_at = datetime('now') WHERE id = ?");
@@ -44,11 +46,12 @@ module.exports = function createPartyRouter(io) {
   const router = express.Router();
 
   router.get('/party/new', requireAuth, blockManagement, (req, res) => {
-    res.render('party/new', { title: 'Live-Party starten', error: null });
+    res.render('party/new', { title: 'Live-Party starten', error: null, presets: PARTY_PRESETS });
   });
 
   router.post('/party/new', requireAuth, blockManagement, csrfProtect, (req, res) => {
     const mode = req.body.mode === '2v2' ? '2v2' : '1v1';
+    const settings = resolvePartySettings(mode, req.body);
 
     const createParty = db.transaction(() => {
       let code;
@@ -56,7 +59,10 @@ module.exports = function createPartyRouter(io) {
         code = generateCode();
         if (!getPartyByCode.get(code)) break;
       }
-      const info = insertParty.run(code, mode, req.session.user.id, RACK_SIZE, emptyRack(), emptyRack());
+      const info = insertParty.run(
+        code, mode, req.session.user.id, RACK_SIZE, emptyRack(), emptyRack(),
+        settings.throwsPerTurn, settings.bombEnabled ? 1 : 0
+      );
       insertPartyPlayer.run(info.lastInsertRowid, req.session.user.id, 1);
       return code;
     });
@@ -65,7 +71,7 @@ module.exports = function createPartyRouter(io) {
     try {
       code = createParty();
     } catch (err) {
-      return res.status(400).render('party/new', { title: 'Live-Party starten', error: 'Party konnte nicht erstellt werden, bitte erneut versuchen.' });
+      return res.status(400).render('party/new', { title: 'Live-Party starten', error: 'Party konnte nicht erstellt werden, bitte erneut versuchen.', presets: PARTY_PRESETS });
     }
 
     res.redirect(`/party/${code}`);

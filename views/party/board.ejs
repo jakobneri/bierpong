@@ -135,6 +135,9 @@
         <button type="button" id="party-miss-btn" class="solo-btn miss-btn party-miss-btn" <%= isMyTurn ? '' : 'disabled' %>>DANEBEN</button>
       <% } %>
       <p class="hint">Du triffst nur die Becher der Gegenseite. Nach <%= state.throwsPerTurn %> Wurf/Würfen ist die andere Seite dran.</p>
+      <% if (state.bombEnabled) { %>
+        <p class="hint bomb-hint">💣 Bomben-Regel aktiv: Zwei Treffer in Folge sprengen alle Nachbarbecher mit!</p>
+      <% } %>
     </div>
   <% } else { %>
     <% const winnerTeam = state.team1Cups.every(Boolean) ? 2 : 1;

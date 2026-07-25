@@ -67,6 +67,10 @@ db.exec(`
     team2_cups TEXT NOT NULL DEFAULT '[]',
     current_turn_team INTEGER NOT NULL DEFAULT 1 CHECK (current_turn_team IN (1, 2)),
     throws_this_turn INTEGER NOT NULL DEFAULT 0,
+    throws_per_turn INTEGER NOT NULL DEFAULT 1,
+    bomb_enabled INTEGER NOT NULL DEFAULT 0,
+    team1_streak INTEGER NOT NULL DEFAULT 0,
+    team2_streak INTEGER NOT NULL DEFAULT 0,
     match_id INTEGER REFERENCES matches(id),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     started_at TEXT,
@@ -96,6 +100,7 @@ db.exec(`
     cup_index INTEGER NOT NULL,
     hit_by_user_id INTEGER NOT NULL REFERENCES users(id),
     sequence INTEGER NOT NULL,
+    is_bomb INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -124,6 +129,11 @@ ensureColumn('solo_sessions', 'cup_hits', "TEXT NOT NULL DEFAULT '[0,0,0,0,0,0,0
 ensureColumn('parties', 'current_turn_team', 'INTEGER NOT NULL DEFAULT 1');
 ensureColumn('parties', 'throws_this_turn', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('users', 'avatar_filename', 'TEXT');
+ensureColumn('parties', 'throws_per_turn', 'INTEGER NOT NULL DEFAULT 1');
+ensureColumn('parties', 'bomb_enabled', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('parties', 'team1_streak', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('parties', 'team2_streak', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('party_hits', 'is_bomb', 'INTEGER NOT NULL DEFAULT 0');
 
 // If ADMIN_PASSWORD is set, keep a dedicated "admin" account in sync with
 // it on every startup. This account is a pure management login (see

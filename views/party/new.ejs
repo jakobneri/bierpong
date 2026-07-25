@@ -11,9 +11,39 @@
     <label class="radio"><input type="radio" name="mode" value="1v1" checked /> 1 gegen 1</label>
     <label class="radio"><input type="radio" name="mode" value="2v2" /> 2 gegen 2</label>
   </fieldset>
+
+  <fieldset>
+    <legend>Hausregeln</legend>
+    <% Object.entries(presets).forEach(([key, preset], i) => { %>
+      <label class="preset-option">
+        <input type="radio" name="preset" value="<%= key %>" data-preset-option <%= i === 0 ? 'checked' : '' %> />
+        <span class="preset-option-text">
+          <strong><%= preset.label %></strong>
+          <span class="hint small"><%= preset.description %></span>
+        </span>
+      </label>
+    <% }) %>
+  </fieldset>
+
+  <fieldset id="custom-settings-fieldset" class="hidden">
+    <legend>Benutzerdefinierte Einstellungen</legend>
+    <label>
+      Würfe pro Wechsel
+      <select name="throwsPerTurn">
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </label>
+    <label class="radio"><input type="checkbox" name="bombEnabled" /> Bomben-Regel aktivieren</label>
+  </fieldset>
+
   <button type="submit">Party erstellen</button>
 </form>
 
 <p>Schon einen Code bekommen? <a href="/party/join">Party beitreten</a></p>
+
+<script src="/js/party-new.js?v=<%= assetVersion %>"></script>
 
 <%- include('../partials/footer') %>
