@@ -19,6 +19,7 @@ const statsRoutes = require('./routes/stats');
 const adminRoutes = require('./routes/admin');
 const createPartyRouter = require('./routes/party');
 const soloRoutes = require('./routes/solo');
+const legalRoutes = require('./routes/legal');
 const { router: accountRoutes, avatarsDir } = require('./routes/account');
 const initSocket = require('./socket');
 
@@ -100,6 +101,7 @@ app.use(soloRoutes);
 app.use(accountRoutes);
 app.use('/admin', adminRoutes);
 app.use(createPartyRouter(io));
+app.use(legalRoutes);
 
 initSocket(io);
 

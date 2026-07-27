@@ -16,6 +16,7 @@
     t1: (root.dataset.team1Ids || '').split(',').filter(Boolean),
     t2: (root.dataset.team2Ids || '').split(',').filter(Boolean),
   });
+  let lastRematchCode = root.dataset.rematchCode || null;
 
   const banner = document.getElementById('party-live-banner');
   const turnBanner = document.getElementById('party-turn-banner');
@@ -133,16 +134,33 @@
     `;
   }
 
+  function renderRematchSlot(code) {
+    const slot = document.getElementById('rematch-slot');
+    if (!slot) return;
+    slot.innerHTML = code
+      ? `<p><a href="/party/${encodeURIComponent(code)}" class="button">Nächste Runde &rarr;</a></p>`
+      : '';
+  }
+
   function applyState(state) {
     if (state.status !== currentStatus) {
       if (state.status === 'finished') {
         showFinishedBanner(state);
         currentStatus = state.status;
+        lastRematchCode = state.rematchCode || null;
         return;
       }
       // waiting -> active (or any other transition): simplest correct
       // way to pick up the freshly server-rendered layout for the new phase.
       window.location.reload();
+      return;
+    }
+
+    if (state.status === 'finished') {
+      if ((state.rematchCode || null) !== lastRematchCode) {
+        lastRematchCode = state.rematchCode || null;
+        renderRematchSlot(lastRematchCode);
+      }
       return;
     }
 

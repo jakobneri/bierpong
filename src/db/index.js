@@ -104,6 +104,16 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS rule_presets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    throws_per_turn INTEGER NOT NULL,
+    bomb_enabled INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (user_id, name)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_match_players_user ON match_players(user_id);
   CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
   CREATE INDEX IF NOT EXISTS idx_sessions_expire ON sessions(expire);
@@ -112,6 +122,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_solo_sessions_user ON solo_sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_party_hits_user ON party_hits(hit_by_user_id);
   CREATE INDEX IF NOT EXISTS idx_party_hits_party ON party_hits(party_id);
+  CREATE INDEX IF NOT EXISTS idx_rule_presets_user ON rule_presets(user_id);
 `);
 
 function ensureColumn(table, column, definition) {
@@ -134,6 +145,7 @@ ensureColumn('parties', 'bomb_enabled', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('parties', 'team1_streak', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('parties', 'team2_streak', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('party_hits', 'is_bomb', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('parties', 'rematch_code', 'TEXT');
 
 // If ADMIN_PASSWORD is set, keep a dedicated "admin" account in sync with
 // it on every startup. This account is a pure management login (see

@@ -1,0 +1,49 @@
+<fieldset>
+  <legend>Hausregeln</legend>
+  <% Object.entries(presets).forEach(([key, preset]) => { %>
+    <label class="preset-option">
+      <input type="radio" name="preset" value="<%= key %>" data-preset-option <%= selectedPreset === key ? 'checked' : '' %> />
+      <span class="preset-option-text">
+        <strong><%= preset.label %></strong>
+        <span class="hint small"><%= preset.description %></span>
+      </span>
+    </label>
+  <% }) %>
+  <% savedPresets.forEach(sp => { %>
+    <label class="preset-option">
+      <input type="radio" name="preset" value="saved:<%= sp.id %>" data-preset-option <%= selectedPreset === ('saved:' + sp.id) ? 'checked' : '' %> />
+      <span class="preset-option-text">
+        <strong><%= sp.name %></strong>
+        <span class="hint small">
+          <%= sp.throws_per_turn %> Wurf<%= sp.throws_per_turn === 1 ? '' : '/Würfe' %> pro Wechsel<%= sp.bomb_enabled ? ', Bomben-Regel aktiv' : '' %>
+          &middot; eigenes Preset
+        </span>
+      </span>
+    </label>
+  <% }) %>
+  <label class="preset-option">
+    <input type="radio" name="preset" value="custom" data-preset-option <%= selectedPreset === 'custom' ? 'checked' : '' %> />
+    <span class="preset-option-text">
+      <strong>Benutzerdefiniert</strong>
+      <span class="hint small">Wurfanzahl und Bomben-Regel selbst festlegen.</span>
+    </span>
+  </label>
+</fieldset>
+
+<fieldset id="custom-settings-fieldset" class="hidden">
+  <legend>Benutzerdefinierte Einstellungen</legend>
+  <label>
+    Würfe pro Wechsel
+    <select name="throwsPerTurn">
+      <% [1, 2, 3, 4].forEach(n => { %>
+        <option value="<%= n %>" <%= (currentThrowsPerTurn || 2) === n ? 'selected' : '' %>><%= n %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label class="radio"><input type="checkbox" name="bombEnabled" <%= currentBombEnabled ? 'checked' : '' %> /> Bomben-Regel aktivieren</label>
+  <label class="radio"><input type="checkbox" name="savePreset" data-save-preset-toggle /> Als eigenes Preset in meinem Profil speichern</label>
+  <label id="preset-name-field" class="hidden">
+    Name des Presets
+    <input type="text" name="presetName" maxlength="40" placeholder="z.B. Keller-Doppelwurf" />
+  </label>
+</fieldset>

@@ -47,58 +47,94 @@ function getCupNeighbors(index) {
   return result;
 }
 
-// Hausregeln-Presets: throwsPerTurn === null means "use the mode default"
-// (1 in 1v1, 2 in 2v2, via maxPerTeam), resolved at creation time.
+// Built-in Hausregeln-Presets: throwsPerTurn === null means "use the mode
+// default" (1 in 1v1, 2 in 2v2, via maxPerTeam), resolved at creation time.
+// Everything beyond these two is either "custom" (one-off, per party) or a
+// preset a player saved to their own profile (see rule_presets below).
 const PARTY_PRESETS = {
-  standard: {
-    label: 'Standard',
+  classic: {
+    label: 'Classic',
     description: 'Klassische Regeln: reihum ein Wurf pro Wechsel (im 2v2 wirft jede:r einmal, bevor gewechselt wird).',
     throwsPerTurn: null,
     bombEnabled: false,
   },
-  doppelwurf: {
-    label: 'Doppelwurf',
-    description: 'Jede Seite wirft zweimal in Folge, bevor die andere Seite dran ist - auch 1 gegen 1.',
-    throwsPerTurn: 2,
-    bombEnabled: false,
-  },
-  bomben: {
-    label: 'Bomben-Modus',
-    description: 'Standard-Würfe, aber zwei Treffer in Folge einer Seite lassen alle Nachbarbecher mit explodieren.',
+  keller: {
+    label: 'Keller',
+    description: 'Unsere Keller-Hausregeln: Standard-Würfe, aber zwei Treffer in Folge einer Seite sprengen die Nachbarbecher mit (Bomben-Regel).',
     throwsPerTurn: null,
     bombEnabled: true,
-  },
-  chaos: {
-    label: 'Chaos',
-    description: 'Doppelwurf und Bomben-Modus kombiniert - für die Profis unter euch.',
-    throwsPerTurn: 2,
-    bombEnabled: true,
-  },
-  custom: {
-    label: 'Benutzerdefiniert',
-    description: 'Wurfanzahl und Bomben-Regel selbst festlegen.',
-    throwsPerTurn: null,
-    bombEnabled: false,
   },
 };
 
+// Resolves mode + form body into { throwsPerTurn, bombEnabled }. Handles
+// the two built-ins and "custom" (manual fields); a "saved:<id>" preset
+// choice is resolved by the caller first (needs a DB lookup scoped to the
+// requesting user), which then skips calling this for that case.
 function resolvePartySettings(mode, body) {
-  const presetKey = Object.prototype.hasOwnProperty.call(PARTY_PRESETS, body.preset) ? body.preset : 'standard';
+  const presetKey = Object.prototype.hasOwnProperty.call(PARTY_PRESETS, body.preset) ? body.preset : 'classic';
 
-  if (presetKey === 'custom') {
+  if (body.preset === 'custom') {
     let throwsPerTurn = parseInt(body.throwsPerTurn, 10);
     if (!Number.isInteger(throwsPerTurn) || throwsPerTurn < 1 || throwsPerTurn > 4) {
       throwsPerTurn = maxPerTeam(mode);
     }
-    return { preset: presetKey, throwsPerTurn, bombEnabled: body.bombEnabled === 'on' };
+    return { throwsPerTurn, bombEnabled: body.bombEnabled === 'on' };
   }
 
   const preset = PARTY_PRESETS[presetKey];
   return {
-    preset: presetKey,
     throwsPerTurn: preset.throwsPerTurn === null ? maxPerTeam(mode) : preset.throwsPerTurn,
     bombEnabled: preset.bombEnabled,
   };
+}
+
+const listRulePresetsStmt = db.prepare('SELECT * FROM rule_presets WHERE user_id = ? ORDER BY name ASC');
+const getRulePresetStmt = db.prepare('SELECT * FROM rule_presets WHERE id = ? AND user_id = ?');
+const deleteRulePresetStmt = db.prepare('DELETE FROM rule_presets WHERE id = ? AND user_id = ?');
+const upsertRulePresetStmt = db.prepare(`
+  INSERT INTO rule_presets (user_id, name, throws_per_turn, bomb_enabled)
+  VALUES (?, ?, ?, ?)
+  ON CONFLICT(user_id, name) DO UPDATE SET throws_per_turn = excluded.throws_per_turn, bomb_enabled = excluded.bomb_enabled
+`);
+
+// Resolves the settings for a party (creation or in-lobby update), including
+// the "saved:<id>" case which needs a DB lookup scoped to the requesting
+// user (so nobody can apply someone else's saved preset by guessing an id).
+function resolveSettingsFromBody(mode, body, userId) {
+  if (typeof body.preset === 'string' && body.preset.startsWith('saved:')) {
+    const id = parseInt(body.preset.slice('saved:'.length), 10);
+    const saved = getRulePresetStmt.get(id, userId);
+    if (saved) return { throwsPerTurn: saved.throws_per_turn, bombEnabled: !!saved.bomb_enabled };
+  }
+  return resolvePartySettings(mode, body);
+}
+
+// Optionally saves the resolved custom settings as a reusable preset on the
+// user's profile, if they checked "als Preset speichern" and gave it a name.
+function maybeSaveRulePreset(userId, body, resolved) {
+  if (body.preset !== 'custom' || body.savePreset !== 'on') return;
+  const name = (body.presetName || '').trim().slice(0, 40);
+  if (!name) return;
+  upsertRulePresetStmt.run(userId, name, resolved.throwsPerTurn, resolved.bombEnabled ? 1 : 0);
+}
+
+// Best-effort guess at which preset (built-in or saved) matches a party's
+// current settings, so an in-lobby settings form can pre-select it instead
+// of always defaulting to "classic".
+function detectPresetKey(party, savedPresets) {
+  const modeDefault = maxPerTeam(party.mode);
+  const builtinMatch = Object.entries(PARTY_PRESETS).find(([, preset]) => {
+    const expectedThrows = preset.throwsPerTurn === null ? modeDefault : preset.throwsPerTurn;
+    return expectedThrows === party.throws_per_turn && preset.bombEnabled === !!party.bomb_enabled;
+  });
+  if (builtinMatch) return builtinMatch[0];
+
+  const savedMatch = savedPresets.find(
+    (sp) => sp.throws_per_turn === party.throws_per_turn && !!sp.bomb_enabled === !!party.bomb_enabled
+  );
+  if (savedMatch) return `saved:${savedMatch.id}`;
+
+  return 'custom';
 }
 
 const getPartyByCode = db.prepare('SELECT * FROM parties WHERE code = ?');
@@ -124,6 +160,7 @@ function buildPartyState(party) {
     throwsThisTurn: party.throws_this_turn,
     throwsPerTurn: party.throws_per_turn,
     bombEnabled: !!party.bomb_enabled,
+    rematchCode: party.rematch_code || null,
     players: {
       team1: players.filter((p) => p.team === 1).map((p) => ({ id: p.user_id, username: p.username, avatarFilename: p.avatar_filename })),
       team2: players.filter((p) => p.team === 2).map((p) => ({ id: p.user_id, username: p.username, avatarFilename: p.avatar_filename })),
@@ -138,6 +175,12 @@ module.exports = {
   getCupNeighbors,
   PARTY_PRESETS,
   resolvePartySettings,
+  resolveSettingsFromBody,
+  maybeSaveRulePreset,
+  detectPresetKey,
+  listRulePresetsStmt,
+  getRulePresetStmt,
+  deleteRulePresetStmt,
   getPartyByCode,
   getPartyById,
   getPartyPlayersStmt,

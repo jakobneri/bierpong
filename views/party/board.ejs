@@ -16,7 +16,8 @@
   data-is-player="<%= isPlayer %>"
   data-my-team="<%= myTeam || '' %>"
   data-team1-ids="<%= state.players.team1.map(p => p.id).join(',') %>"
-  data-team2-ids="<%= state.players.team2.map(p => p.id).join(',') %>">
+  data-team2-ids="<%= state.players.team2.map(p => p.id).join(',') %>"
+  data-rematch-code="<%= state.rematchCode || '' %>">
 
   <% if (state.status === 'waiting') { %>
     <div class="card">
@@ -26,6 +27,13 @@
           <li class="player-list-item">
             <%- include('../partials/avatar', { avatarFilename: p.avatarFilename, avatarUsername: p.username, avatarSize: 'sm' }) %>
             <%= p.username %>
+            <% if (isCreator && p.id !== myId) { %>
+              <form action="/party/<%= state.code %>/kick" method="POST" class="inline-form kick-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <input type="hidden" name="userId" value="<%= p.id %>" />
+                <button type="submit" class="button tiny secondary">Kick</button>
+              </form>
+            <% } %>
           </li>
         <% }) %>
         <% for (let i = state.players.team1.length; i < state.maxPerTeam; i++) { %><li class="empty-slot">frei</li><% } %>
@@ -39,11 +47,39 @@
           <li class="player-list-item">
             <%- include('../partials/avatar', { avatarFilename: p.avatarFilename, avatarUsername: p.username, avatarSize: 'sm' }) %>
             <%= p.username %>
+            <% if (isCreator && p.id !== myId) { %>
+              <form action="/party/<%= state.code %>/kick" method="POST" class="inline-form kick-form">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <input type="hidden" name="userId" value="<%= p.id %>" />
+                <button type="submit" class="button tiny secondary">Kick</button>
+              </form>
+            <% } %>
           </li>
         <% }) %>
         <% for (let i = state.players.team2.length; i < state.maxPerTeam; i++) { %><li class="empty-slot">frei</li><% } %>
       </ul>
     </div>
+
+    <% if (isCreator) { %>
+      <div class="card">
+        <h2>Hausregeln anpassen</h2>
+        <form action="/party/<%= state.code %>/settings" method="POST" class="form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <%- include('../partials/rule-settings-fields', {
+            presets,
+            savedPresets,
+            selectedPreset,
+            currentThrowsPerTurn: state.throwsPerTurn,
+            currentBombEnabled: state.bombEnabled,
+          }) %>
+          <button type="submit" class="button small secondary">Einstellungen speichern</button>
+        </form>
+      </div>
+    <% } else { %>
+      <p class="hint">
+        Hausregeln: <%= state.throwsPerTurn %> Wurf<%= state.throwsPerTurn === 1 ? '' : '/Würfe' %> pro Wechsel<%= state.bombEnabled ? ', Bomben-Regel aktiv 💣' : '' %>.
+      </p>
+    <% } %>
 
     <% if (!isPlayer && openTeams.length === 1) { %>
       <form action="/party/<%= state.code %>/join" method="POST" class="inline-form">
@@ -161,6 +197,18 @@
       <% if (state.matchId) { %>
         <p><a href="/matches/history">Im Spielverlauf ansehen</a> &middot; <a href="/stats">Bestenliste</a></p>
       <% } %>
+      <div id="rematch-slot">
+        <% if (state.rematchCode) { %>
+          <p><a href="/party/<%= state.rematchCode %>" class="button">Nächste Runde &rarr;</a></p>
+        <% } else if (isCreator) { %>
+          <form action="/party/<%= state.code %>/rematch" method="POST" class="inline-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <button type="submit" class="button">Neue Runde starten</button>
+          </form>
+        <% } else { %>
+          <p class="hint">Warte, ob der Host eine neue Runde startet...</p>
+        <% } %>
+      </div>
     </div>
   <% } %>
 
@@ -169,5 +217,8 @@
 
 <script src="/socket.io/socket.io.js?v=<%= assetVersion %>"></script>
 <script src="/js/party.js?v=<%= assetVersion %>"></script>
+<% if (isCreator && state.status === 'waiting') { %>
+  <script src="/js/rule-settings.js?v=<%= assetVersion %>"></script>
+<% } %>
 
 <%- include('../partials/footer') %>

@@ -38,6 +38,12 @@
       </tbody>
     </table>
   </div>
+
+  <h2>Globale Trefferverteilung</h2>
+  <div class="card">
+    <%- include('partials/heatmap', { cupTotals: cupHeatmap, cupTotalsMax: cupHeatmapMax }) %>
+    <p class="hint">Zahl im Becher = Treffer auf dieser Position, über alle Spieler und Live-Partys hinweg.</p>
+  </div>
 <% } %>
 
 <%- include('partials/footer') %>

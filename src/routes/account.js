@@ -5,6 +5,7 @@ const multer = require('multer');
 const db = require('../db');
 const { requireAuth } = require('../middleware/auth');
 const { csrfProtect } = require('../middleware/csrf');
+const { deleteRulePresetStmt } = require('../partyState');
 
 const router = express.Router();
 
@@ -70,6 +71,12 @@ router.post('/account/avatar', requireAuth, handleUpload, csrfProtect, (req, res
   }
 
   res.redirect(`/stats/${username}`);
+});
+
+router.post('/account/presets/:id/delete', requireAuth, csrfProtect, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  deleteRulePresetStmt.run(id, req.session.user.id);
+  res.redirect(`/stats/${req.session.user.username}`);
 });
 
 module.exports = { router, avatarsDir };

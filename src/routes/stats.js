@@ -1,7 +1,8 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { personalCupHeatmap, firstHitDistribution } = require('../statsHelpers');
+const { personalCupHeatmap, firstHitDistribution, globalCupHeatmap } = require('../statsHelpers');
+const { listRulePresetsStmt } = require('../partyState');
 
 const router = express.Router();
 
@@ -108,7 +109,9 @@ function withWinRate(row) {
 
 router.get('/stats', requireAuth, (req, res) => {
   const rows = leaderboardStmt.all().map(withWinRate);
-  res.render('leaderboard', { title: 'Bestenliste', rows });
+  const cupHeatmap = globalCupHeatmap();
+  const cupHeatmapMax = Math.max(1, ...cupHeatmap);
+  res.render('leaderboard', { title: 'Bestenliste', rows, cupHeatmap, cupHeatmapMax });
 });
 
 router.get('/stats/:username', requireAuth, (req, res) => {
@@ -127,18 +130,20 @@ router.get('/stats/:username', requireAuth, (req, res) => {
   const avatarError = req.session.avatarError || null;
   delete req.session.avatarError;
 
+  const isOwnProfile = stats.id === req.session.user.id;
   const opponents = opponentStatsStmt.all(stats.id).map(withWinRate);
   const teammates = teammateStatsStmt.all(stats.id).map(withWinRate);
   const cupHeatmap = personalCupHeatmap(stats.id);
   const cupHeatmapMax = Math.max(1, ...cupHeatmap);
   const firstHit = firstHitDistribution(stats.id);
   const firstHitMax = Math.max(1, ...firstHit.totals);
+  const savedPresets = isOwnProfile ? listRulePresetsStmt.all(stats.id) : [];
 
   res.render('profile', {
     title: `Statistik: ${stats.username}`,
     stats: withWinRate(stats),
     history,
-    isOwnProfile: stats.id === req.session.user.id,
+    isOwnProfile,
     avatarError,
     opponents,
     teammates,
@@ -146,6 +151,7 @@ router.get('/stats/:username', requireAuth, (req, res) => {
     cupHeatmapMax,
     firstHit,
     firstHitMax,
+    savedPresets,
   });
 });
 
