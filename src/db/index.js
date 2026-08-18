@@ -146,6 +146,7 @@ ensureColumn('parties', 'team1_streak', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('parties', 'team2_streak', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('party_hits', 'is_bomb', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('parties', 'rematch_code', 'TEXT');
+ensureColumn('users', 'is_deleted', 'INTEGER NOT NULL DEFAULT 0');
 
 // If ADMIN_PASSWORD is set, keep a dedicated "admin" account in sync with
 // it on every startup. This account is a pure management login (see

@@ -155,4 +155,22 @@
   </ul>
 <% } %>
 
+<% if (isOwnProfile && !user.isManagement) { %>
+  <h2>Gefahrenzone</h2>
+  <div class="card danger-zone">
+    <% if (deleteAccountError) { %><p class="error"><%= deleteAccountError %></p><% } %>
+    <p class="hint">
+      Löscht deinen Account unwiderruflich: Benutzername, Profilbild und Zugangsdaten werden entfernt. Ergebnisse
+      gemeinsam gespielter Partys bleiben anonymisiert erhalten, damit die Statistiken deiner Mitspieler:innen
+      korrekt bleiben. Mehr dazu in der <a href="/datenschutz">Datenschutzerklärung</a>.
+    </p>
+    <form action="/account/delete" method="POST" id="delete-account-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button type="submit" class="button danger">Account löschen</button>
+    </form>
+  </div>
+<% } %>
+
+<script src="/js/account-delete.js?v=<%= assetVersion %>"></script>
+
 <%- include('partials/footer') %>

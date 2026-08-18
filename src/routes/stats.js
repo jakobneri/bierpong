@@ -129,6 +129,8 @@ router.get('/stats/:username', requireAuth, (req, res) => {
 
   const avatarError = req.session.avatarError || null;
   delete req.session.avatarError;
+  const deleteAccountError = req.session.deleteAccountError || null;
+  delete req.session.deleteAccountError;
 
   const isOwnProfile = stats.id === req.session.user.id;
   const opponents = opponentStatsStmt.all(stats.id).map(withWinRate);
@@ -145,6 +147,7 @@ router.get('/stats/:username', requireAuth, (req, res) => {
     history,
     isOwnProfile,
     avatarError,
+    deleteAccountError,
     opponents,
     teammates,
     cupHeatmap,

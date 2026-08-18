@@ -1,6 +1,7 @@
 <%- include('partials/header', { user: user, csrfToken: csrfToken }) %>
 
 <h1>Login</h1>
+<% if (typeof deleted !== 'undefined' && deleted) { %><p class="notice">Dein Account wurde gelöscht.</p><% } %>
 <% if (error) { %><p class="error"><%= error %></p><% } %>
 <form action="/login" method="POST" class="card form">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>" />

@@ -69,7 +69,7 @@ router.post('/register', redirectIfAuthenticated, authLimiter, csrfProtect, asyn
 });
 
 router.get('/login', redirectIfAuthenticated, (req, res) => {
-  res.render('login', { title: 'Login', error: null });
+  res.render('login', { title: 'Login', error: null, deleted: req.query.deleted === '1' });
 });
 
 router.post('/login', redirectIfAuthenticated, authLimiter, csrfProtect, async (req, res) => {

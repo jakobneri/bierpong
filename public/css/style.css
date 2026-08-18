@@ -281,6 +281,8 @@ button:hover, .button:hover { background: var(--amber-dark); }
 .button.small { padding: 0.35rem 0.75rem; min-height: 40px; font-size: 0.85rem; }
 .button.tiny { padding: 0.2rem 0.5rem; min-height: 28px; font-size: 0.75rem; }
 .button.danger { background: var(--danger); }
+
+.danger-zone { border: 1px solid var(--danger); }
 button:disabled, .button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .inline-form { display: inline; }

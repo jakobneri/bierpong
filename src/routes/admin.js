@@ -150,6 +150,9 @@ router.post('/users/:id/toggle-active', csrfProtect, (req, res) => {
   if (targetId === req.session.user.id) {
     return renderUsersWithMessage(res, 400, null, 'Du kannst deinen eigenen Account nicht deaktivieren.');
   }
+  if (target.is_deleted) {
+    return renderUsersWithMessage(res, 400, null, 'Dieser Account wurde vom Nutzer selbst gelöscht und kann nicht reaktiviert werden.');
+  }
 
   setActiveStmt.run(target.is_active ? 0 : 1, targetId);
   renderUsersWithMessage(res, 200, `Account "${target.username}" ${target.is_active ? 'deaktiviert' : 'aktiviert'}.`, null);
@@ -162,6 +165,9 @@ router.post('/users/:id/reset-password', csrfProtect, async (req, res) => {
 
   if (target.is_management) {
     return renderUsersWithMessage(res, 400, null, 'Das Passwort dieses Accounts wird über ADMIN_PASSWORD in der .env gesetzt.');
+  }
+  if (target.is_deleted) {
+    return renderUsersWithMessage(res, 400, null, 'Dieser Account wurde vom Nutzer selbst gelöscht.');
   }
 
   const newPassword = req.body.newPassword || '';
